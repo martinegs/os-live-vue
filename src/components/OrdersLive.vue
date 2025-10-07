@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="wrap">
     <h2 class="title">Ordenes</h2>
 
@@ -13,12 +13,15 @@
       </div>
       <div class="ops-metrics">
         <div class="ops-card">
-          <span class="ops-card-label">Turno</span>
-          <strong
-            class="ops-card-value"
-            :class="{ 'ops-card-value--inactive': !turnoActivo }"
-          >
-            {{ turnoActivo ? "Activo" : "Inactivo" }}
+          <span class="ops-card-label">Recaudado hoy</span>
+          <strong class="ops-card-value">
+            {{ formatArs(resumenHoy.total) }}
+          </strong>
+        </div>
+        <div class="ops-card">
+          <span class="ops-card-label">Metros hoy</span>
+          <strong class="ops-card-value">
+            {{ formatMetros(resumenHoy.metros) }}
           </strong>
         </div>
         <div class="ops-card">
@@ -29,10 +32,6 @@
           >
             {{ formattedAlerts }}
           </strong>
-        </div>
-        <div class="ops-card">
-          <span class="ops-card-label">Usuarios</span>
-          <strong class="ops-card-value">18</strong>
         </div>
       </div>
     </section>
@@ -90,13 +89,20 @@ const CREATE_URL = isDev ? "https://digitaltex.ar/api/os/create" : "/api/os/crea
 const fmtARS = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 });
 const formatArs = (value) => fmtARS.format(value ?? 0);
 
+const formatMetros = (value) => {
+  const num = Number(value) || 0;
+  const options = num % 1 === 0
+    ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+    : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  return num.toLocaleString("es-AR", options);
+};
+
 const CHUNK_SIZE = 30;
 
 const estado = ref("cargando...");
 const apiStatus = ref("desconectado");
 const sseStatus = ref("desconectado");
 const alertsCount = ref(0);
-const turnoActivo = ref(isTurnActive());
 
 function setApiStatus(value, meta) {
   if (apiStatus.value !== value) {
@@ -124,10 +130,6 @@ function registerAlert(tipo, id) {
   console.info("[OrdersLive] Alerta registrada", { tipo, id, total: alertsCount.value });
 }
 
-function isTurnActive() {
-  const hour = new Date().getHours();
-  return hour >= 10 && hour < 22;
-}
 const q = ref("");
 
 const mapa = reactive(new Map());
@@ -551,10 +553,6 @@ function startTicker() {
         mapa.set(id, { ...row, _blinkUntil: 0 });
       }
     }
-    const activeNow = isTurnActive();
-    if (turnoActivo.value !== activeNow) {
-      turnoActivo.value = activeNow;
-    }
   }, 500);
 }
 
@@ -583,6 +581,28 @@ const filasOrdenadas = computed(() => {
     if (a.activityTs !== b.activityTs) return b.activityTs - a.activityTs;
     return b.id - a.id;
   });
+});
+
+const resumenHoy = computed(() => {
+  const hoy = new Date();
+  const hoyStr = hoy.toISOString().slice(0, 10);
+  let total = 0;
+  let metros = 0;
+
+  for (const row of filasOrdenadas.value) {
+    const fecha = row.fechaIngreso ?? row.dataInicial ?? row.ts ?? null;
+    if (!fecha) continue;
+    const fechaObj = new Date(fecha);
+    if (Number.isNaN(fechaObj.getTime())) continue;
+    const fechaStr = fechaObj.toISOString().slice(0, 10);
+    if (fechaStr === hoyStr) {
+      total += Number(row.valorPagado ?? 0) || 0;
+      const metrosRow = Number(row.metros ?? 0);
+      if (Number.isFinite(metrosRow)) metros += metrosRow;
+    }
+  }
+
+  return { total, metros };
 });
 
 const visibleRows = computed(() => {
@@ -935,3 +955,4 @@ function loadMoreRows() {
   }
 }
 </style>
+

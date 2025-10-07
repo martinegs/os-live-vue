@@ -5,12 +5,10 @@
         <tr class="text-center">
           <th scope="col">#</th>
           <th scope="col">Cliente</th>
-          <th scope="col">Trabajo</th>
-          <th scope="col">Usuario</th>
-          <th scope="col">Metros</th>
-          <th scope="col">Clase</th>
-          <th scope="col">Entrega Estimada</th>
-          <th scope="col">Lugar de Entrega</th>
+              <th scope="col">Usuario</th>
+              <th scope="col">Metros</th>
+              <th scope="col">Clase</th>
+              <th scope="col">Lugar de Entrega</th>
           <th scope="col">Status Orden</th>
           <th scope="col">Status Pago</th>
         </tr>
@@ -33,27 +31,22 @@
             {{ row.cliente_nombre || "Sin cliente" }}
             <span v-if="Number(row.usuario_id) === 14" class="emoji">VIP</span>
           </td>
-          <td data-label="Trabajo">{{ row.trabajo || row.descripcionProducto || "?" }}</td>
           <td data-label="Usuario">{{ row.usuario_nombre || row.nome || "-" }}</td>
           <td data-label="Metros">{{ formatNumber(row.metros) }}</td>
           <td data-label="Clase">{{ row.clase || "?" }}</td>
-          <td data-label="Entrega Estimada">{{ formatDate(row.fechaEntrega) }}</td>
-          <td data-label="Lugar de Entrega">{{ row.lugarEntrega || row.lugar || "?" }}</td>
-          <td data-label="Status Orden" class="text-center">
+          <td data-label="Lugar de Entrega">{{ formatPlace(row.lugarEntrega || row.lugar || "?") }}</td>
+          <td data-label="Status Orden" class="text-center status-col">
             <span class="status-chip" :style="badgeStyle(row.status, estadoColors)">
               {{ row.status || "?" }}
             </span>
           </td>
-          <td data-label="Status Pago" class="text-center pago-cell">
-            <span class="status-chip" :style="badgeStyle(row.statusPago, pagoColors)">
-              {{ row.statusPago || "?" }}
-            </span>
+          <td data-label="Status Pago" class="text-center status-col status-col--pago">
             <span
-              v-if="row.esAreaClientes && row.hayNOP && showMp(row.status)"
-              class="mp-chip"
-              title="Pago Mercado Pago"
+              class="status-chip"
+              :class="{ 'status-chip--mp': row.esAreaClientes && row.hayNOP && showMp(row.status) }"
+              :style="badgeStyle(row.statusPago, pagoColors, row.esAreaClientes && row.hayNOP && showMp(row.status))"
             >
-              MP
+              {{ formatPagoLabel(row.statusPago, row.esAreaClientes && row.hayNOP && showMp(row.status)) }}
             </span>
           </td>
         </tr>
@@ -125,19 +118,20 @@ function formatNumber(value) {
   return num.toFixed(2);
 }
 
-function formatDate(value) {
-  if (!value) return "?";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("es-AR");
-}
-
-function badgeStyle(status, palette) {
+function badgeStyle(status, palette, isMp) {
   const key = (status || "").trim();
   const color = palette[key] || palette._fallback || "#475569";
+  if (isMp) {
+    return {
+      backgroundColor: "#00aae4",
+      borderColor: "#008dc7",
+      color: "#f8fafc",
+    };
+  }
   return {
     backgroundColor: color,
     borderColor: color,
+    color: "#0f172a",
   };
 }
 
@@ -145,11 +139,21 @@ function showMp(status) {
   return !mpDisabledStatuses.has((status || "").toLowerCase());
 }
 
+function formatPagoLabel(label, isMp) {
+  if (isMp) return "Pagado";
+  return label || "?";
+}
+
 function rowClasses(row) {
   return {
     blink: row._blinkUntil && row._blinkUntil > Date.now(),
     "row-pending": Number(row.pendiente) === 1,
   };
+}
+
+function formatPlace(value) {
+  if (!value) return "?";
+  return value.replace(/^local\s*-\s*/i, "").trim() || "?";
 }
 </script>
 
@@ -246,11 +250,16 @@ td[data-label="#"] {
   min-width: 140px;
 }
 
-.pago-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+.status-col {
+  padding: 6px 10px;
+}
+
+.status-col .status-chip {
+  width: auto;
+}
+
+.status-col--pago .status-chip {
+  margin-right: 6px;
 }
 
 .mp-chip {
