@@ -449,8 +449,20 @@ function toggle(id) {
 
 @media (max-width: 1100px) {
   .menu-shell {
+    position: static;
     width: 100%;
-    max-width: 560px;
+    max-width: 680px;
+  }
+}
+
+@media (max-width: 768px) {
+  .menu-shell {
+    padding: 22px 18px;
+    gap: 20px;
+  }
+
+  .status-cards {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 }
 
