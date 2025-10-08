@@ -3,33 +3,33 @@
     <header class="insights-header">
       <h4>Resumen en vivo</h4>
       <span>
-        {{ (stats.totalOrdenes ?? 0) }} órdenes -
+        {{ stats.totalOrdenes ?? 0 }} ordenes -
         {{ currency(stats.totalFacturado) }} facturado
       </span>
     </header>
 
     <div class="insights-grid">
       <div class="insight-card">
-        <span class="insight-label">Pagado</span>
-        <strong class="insight-value">{{ currency(stats.totalPagado) }}</strong>
-        <span class="insight-sub">Saldo pendiente: {{ currency(stats.totalPendiente) }}</span>
+        <span class="insight-label">Efectivo</span>
+        <strong class="insight-value">{{ currency(stats.totalEfectivo) }}</strong>
+        <span class="insight-sub">Saldo pendiente hoy: {{ currency(stats.totalPendiente) }}</span>
       </div>
       <div class="insight-card">
-        <span class="insight-label">Ticket promedio</span>
-        <strong class="insight-value">{{ currency(stats.ticketPromedio) }}</strong>
-        <span class="insight-sub">{{ currency(stats.promedioPagado) }} abonado promedio</span>
+        <span class="insight-label">Mercado Pago</span>
+        <strong class="insight-value">{{ currency(stats.totalMercadoPago) }}</strong>
+        <span class="insight-sub">Operaciones MP: {{ stats.mercadoPagoCount ?? 0 }}</span>
       </div>
       <div class="insight-card">
         <span class="insight-label">Metros en proceso</span>
         <strong class="insight-value">{{ stats.totalMetros ?? 0 }}</strong>
-        <span class="insight-sub">{{ stats.ordenesConMetros ?? 0 }} órdenes con metros</span>
+        <span class="insight-sub">{{ stats.ordenesConMetros ?? 0 }} ordenes con metros</span>
       </div>
     </div>
 
     <div class="charts-wrapper">
       <div class="insight-chart">
         <header class="insight-chart__header">
-          <h5>Distribución por estado</h5>
+          <h5>Distribucion por estado</h5>
           <span>{{ stats.estadoTotal ?? 0 }} estados activos</span>
         </header>
         <div class="chart-layout">
@@ -75,7 +75,7 @@
       <div v-if="pagoChartData.length" class="insight-chart insight-chart--secondary">
         <header class="insight-chart__header">
           <h5>Pagos registrados</h5>
-          <span>{{ stats.totalOrdenes ?? 0 }} órdenes consideradas</span>
+          <span>{{ stats.totalOrdenes ?? 0 }} ordenes consideradas</span>
         </header>
         <div class="payment-list">
           <div
@@ -441,6 +441,13 @@ function currency(value) {
   }
 }
 </style>
+
+
+
+
+
+
+
 
 
 

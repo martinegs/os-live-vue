@@ -7,15 +7,24 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite dev",
+    "dev": "concurrently \"npm:dev:client\" \"npm:dev:api\"",
+    "dev:client": "vite dev",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:api": "nodemon --watch server server/index.js",
+    "dev:full": "npm run dev"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "dotenv": "^16.4.5",
+    "mysql2": "^3.11.0",
     "vue": "^3.5.22"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
+    "concurrently": "^9.0.1",
+    "nodemon": "^3.1.7",
     "vite": "^7.1.7",
     "vite-plugin-vue-devtools": "^8.0.2"
   }

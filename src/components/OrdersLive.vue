@@ -79,8 +79,10 @@ import OrdersTable from "./orders/OrdersTable.vue";
 import OrdersToolbar from "./orders/OrdersToolbar.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 
-const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
-const baseApi = isDev ? "https://digitaltex.ar" : "";
+const isBrowser = typeof window !== "undefined";
+const isDev = isBrowser && window.location.hostname === "localhost";
+const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? (isDev ? "http://localhost:4000" : "");
+const baseApi = apiOrigin.replace(/\/$/, "");
 
 // Hook into the composable so the view stays declarative and the networking logic lives in one place.
 const {

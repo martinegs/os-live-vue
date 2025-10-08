@@ -523,56 +523,55 @@ export function useOrdersLive(options = {}) {
     });
   });
 
-  const resumenHoy = computed(() => {
-    const hoy = new Date();
-    const hoyStr = hoy.toISOString().slice(0, 10);
-    let total = 0;
-    let metros = 0;
-
-    for (const row of filasOrdenadas.value) {
-      const fecha = row.fechaIngreso ?? row.dataInicial ?? row.ts ?? null;
-      if (!fecha) continue;
-      const fechaObj = new Date(fecha);
-      if (Number.isNaN(fechaObj.getTime())) continue;
-      const fechaStr = fechaObj.toISOString().slice(0, 10);
-      if (fechaStr === hoyStr) {
-        total += Number(row.valorPagado ?? 0) || 0;
-        const metrosRow = Number(row.metros ?? 0);
-        if (Number.isFinite(metrosRow)) metros += metrosRow;
-      }
-    }
-
-    return { total, metros };
-  });
-
   const visibleRows = computed(() => {
     if (!visibleCount.value) return filasOrdenadas.value.slice(0, chunkSize);
     return filasOrdenadas.value.slice(0, visibleCount.value);
   });
 
   const stats = computed(() => {
+    const hoyStr = new Date().toISOString().slice(0, 10);
     const rows = filasOrdenadas.value;
-    const totalOrdenes = rows.length;
+    let totalOrdenes = 0;
     let totalFacturado = 0;
-    let totalPagado = 0;
     let totalPendiente = 0;
     let totalMetros = 0;
     let ordenesConMetros = 0;
+    let totalEfectivo = 0;
+    let totalMercadoPago = 0;
+    let efectivoCount = 0;
+    let mercadoPagoCount = 0;
     const estadoCount = new Map();
     const pagoCount = new Map();
 
     for (const row of rows) {
+      const fecha = row.fechaIngreso ?? row.dataInicial ?? row.ts ?? null;
+      if (!fecha) continue;
+      const fechaObj = new Date(fecha);
+      if (Number.isNaN(fechaObj.getTime())) continue;
+      const fechaStr = fechaObj.toISOString().slice(0, 10);
+      if (fechaStr !== hoyStr) continue;
+
+      totalOrdenes += 1;
+
       const valorTotal = Number(row.valorTotal ?? 0) || 0;
       const valorPagado = Number(row.valorPagado ?? 0) || 0;
       const metros = Number(row.metros ?? 0);
 
       totalFacturado += valorTotal;
-      totalPagado += valorPagado;
       totalPendiente += Math.max(valorTotal - valorPagado, 0);
 
       if (Number.isFinite(metros) && metros > 0) {
         totalMetros += metros;
         ordenesConMetros += 1;
+      }
+
+      const esMp = Boolean(row.hayNOP || row.esAreaClientes);
+      if (esMp) {
+        totalMercadoPago += valorPagado;
+        mercadoPagoCount += 1;
+      } else {
+        totalEfectivo += valorPagado;
+        efectivoCount += 1;
       }
 
       const estadoLabel = (row.status || "Sin estado").trim() || "Sin estado";
@@ -582,23 +581,31 @@ export function useOrdersLive(options = {}) {
       pagoCount.set(pagoLabel, (pagoCount.get(pagoLabel) ?? 0) + 1);
     }
 
-    const ticketPromedio = totalOrdenes ? totalFacturado / totalOrdenes : 0;
-    const promedioPagado = totalOrdenes ? totalPagado / totalOrdenes : 0;
+    const totalRecaudado = totalEfectivo + totalMercadoPago;
+    const metrosRedondeados =
+      totalMetros % 1 === 0 ? totalMetros : Number(totalMetros.toFixed(2));
 
     return {
       totalOrdenes,
       totalFacturado,
-      totalPagado,
       totalPendiente,
-      totalMetros: totalMetros % 1 === 0 ? totalMetros : totalMetros.toFixed(2),
+      totalMetros: metrosRedondeados,
       ordenesConMetros,
-      ticketPromedio,
-      promedioPagado,
+      totalEfectivo,
+      totalMercadoPago,
+      totalRecaudado,
+      efectivoCount,
+      mercadoPagoCount,
       estadoCount,
       estadoTotal: estadoCount.size,
       pagoCount,
     };
   });
+
+  const resumenHoy = computed(() => ({
+    total: stats.value.totalRecaudado ?? 0,
+    metros: stats.value.totalMetros ?? 0,
+  }));
 
   const estadoChartData = computed(() => {
     const total = stats.value.totalOrdenes || 1;
@@ -712,3 +719,4 @@ export function useOrdersLive(options = {}) {
     loadMoreRows,
   };
 }
+
