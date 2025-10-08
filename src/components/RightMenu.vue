@@ -77,6 +77,7 @@
 <script setup>
 import { reactive } from "vue";
 
+// Static navigation blueprint; allows the view to stay declarative and avoids hardcoding markup.
 const sections = [
   { id: "panel", label: "Panel", icon: "⌂" },
   {
@@ -177,6 +178,7 @@ const sections = [
 
 const openState = reactive({});
 
+// Basic accordion state so each submenu can expand independently.
 function isOpen(id) {
   if (openState[id] === undefined) {
     openState[id] = false;

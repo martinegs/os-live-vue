@@ -145,6 +145,7 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "submit"]);
 
+// Cache a few labels so the template stays compact and the business copy lives here.
 const isCreate = computed(() => props.editing.mode === "create");
 
 const submitLabel = computed(() => {

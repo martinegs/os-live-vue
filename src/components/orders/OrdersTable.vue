@@ -78,6 +78,7 @@ const emit = defineEmits(["edit", "load-more"]);
 const container = ref(null);
 let lastEmittedHeight = 0;
 
+// Emit a "load-more" event when the user approaches the end of the scrollable table.
 const handleScroll = () => {
   const el = container.value;
   if (!el) return;
@@ -103,6 +104,7 @@ onBeforeUnmount(() => {
   }
 });
 
+// Orders paid through Mercado Pago should only highlight when the status still allows it.
 const mpDisabledStatuses = new Set(["presupuesto", "cancelado"]);
 
 function formatNumber(value) {

@@ -26,47 +26,74 @@
       </div>
     </div>
 
-    <div class="insight-chart">
-      <header class="insight-chart__header">
-        <h5>Distribución por estado</h5>
-        <span>{{ stats.estadoTotal ?? 0 }} estados activos</span>
-      </header>
-      <div class="chart-layout">
-        <div class="bars">
-          <div
-            v-for="item in estadoChartData"
-            :key="item.label"
-            class="bar"
-            :style="{ '--bar-width': item.porcentaje + '%', '--bar-color': item.color }"
-          >
-            <span class="bar-label">{{ item.label }}</span>
-            <span class="bar-value">{{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)</span>
-            <span class="bar-fill"></span>
+    <div class="charts-wrapper">
+      <div class="insight-chart">
+        <header class="insight-chart__header">
+          <h5>Distribución por estado</h5>
+          <span>{{ stats.estadoTotal ?? 0 }} estados activos</span>
+        </header>
+        <div class="chart-layout">
+          <div class="bars">
+            <div
+              v-for="item in estadoChartData"
+              :key="item.label"
+              class="bar"
+              :style="{ '--bar-width': item.porcentaje + '%', '--bar-color': item.color }"
+            >
+              <span class="bar-label">{{ item.label }}</span>
+              <span class="bar-value">{{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)</span>
+              <span class="bar-fill"></span>
+            </div>
+          </div>
+
+          <div class="pie">
+            <svg viewBox="0 0 120 120" class="pie-chart">
+              <circle class="pie-bg" cx="60" cy="60" r="42" />
+              <circle
+                v-for="segment in estadoPieSegments"
+                :key="segment.label"
+                class="pie-segment"
+                cx="60"
+                cy="60"
+                r="42"
+                :stroke="segment.color"
+                :stroke-dasharray="segment.dashArray"
+                :stroke-dashoffset="segment.dashOffset"
+              />
+            </svg>
+            <ul class="pie-legend">
+              <li v-for="segment in estadoPieSegments" :key="segment.label">
+                <span class="dot" :style="{ '--dot-color': segment.color }"></span>
+                <span class="legend-label">{{ segment.label }}</span>
+                <span class="legend-value">{{ segment.cantidad }}</span>
+              </li>
+            </ul>
           </div>
         </div>
+      </div>
 
-        <div class="pie">
-          <svg viewBox="0 0 120 120" class="pie-chart">
-            <circle class="pie-bg" cx="60" cy="60" r="42" />
-            <circle
-              v-for="segment in estadoPieSegments"
-              :key="segment.label"
-              class="pie-segment"
-              cx="60"
-              cy="60"
-              r="42"
-              :stroke="segment.color"
-              :stroke-dasharray="segment.dashArray"
-              :stroke-dashoffset="segment.dashOffset"
-            />
-          </svg>
-          <ul class="pie-legend">
-            <li v-for="segment in estadoPieSegments" :key="segment.label">
-              <span class="dot" :style="{ '--dot-color': segment.color }"></span>
-              <span class="legend-label">{{ segment.label }}</span>
-              <span class="legend-value">{{ segment.cantidad }}</span>
-            </li>
-          </ul>
+      <div v-if="pagoChartData.length" class="insight-chart insight-chart--secondary">
+        <header class="insight-chart__header">
+          <h5>Pagos registrados</h5>
+          <span>{{ stats.totalOrdenes ?? 0 }} órdenes consideradas</span>
+        </header>
+        <div class="payment-list">
+          <div
+            v-for="item in pagoChartData"
+            :key="item.label"
+            class="payment-row"
+          >
+            <div class="payment-meta">
+              <span class="payment-dot" :style="{ '--dot-color': item.color }"></span>
+              <span class="payment-label">{{ item.label }}</span>
+            </div>
+            <div class="payment-bar">
+              <span class="payment-bar__fill" :style="{ width: item.porcentaje.toFixed(0) + '%', background: item.color }"></span>
+            </div>
+            <span class="payment-value">
+              {{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -74,6 +101,7 @@
 </template>
 
 <script setup>
+// Small formatting helper keeps the template tidy while relying on the formatter passed from the parent.
 const props = defineProps({
   stats: {
     type: Object,

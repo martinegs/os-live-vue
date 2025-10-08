@@ -2,9 +2,10 @@
   <div class="toolbar">
     <input
       v-model="query"
-      type="text"
+      type="search"
       class="input"
       :placeholder="placeholder"
+      aria-label="Buscar órdenes"
     />
     <button type="button" class="toolbar-btn" @click="emit('create')">
       {{ buttonLabel }}
@@ -32,6 +33,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "create"]);
 
+// Bridge the toolbar input with the parent via v-model for a symmetric API.
 const query = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),

@@ -16,9 +16,10 @@ import OrdersLive from "./components/OrdersLive.vue";
   align-items: flex-start;
   padding: 40px;
   box-sizing: border-box;
-  background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.2), transparent),
-              radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.18), transparent),
-              #0b1020;
+  background:
+    radial-gradient(circle at top left, rgba(129, 140, 248, 0.2), transparent),
+    radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.18), transparent),
+    #0b1020;
 }
 
 @media (max-width: 1100px) {

@@ -1,39 +1,40 @@
-# DigitalTex
+﻿# DigitalTex Ops Dashboard
 
-This template should help get you started developing with Vue 3 in Vite.
+Panel de monitoreo en tiempo real para las órdenes de trabajo de DigitalTex. La app consume la API existente y se actualiza mediante Server-Sent Events para que la operación tenga siempre la misma información que el backend.
 
-## Recommended IDE Setup
+## Características
+- Stream en vivo con merge incremental mediante `useOrdersLive`.
+- Búsqueda instantánea y paginado progresivo con carga bajo demanda.
+- Editor contextual para crear/actualizar órdenes sin abandonar el panel.
+- Tablero de métricas con distribución por estado y forma de pago.
+- Diseño adaptable pensado para escritorio, tablet y móvil.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+## Primeros pasos
+```bash
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
 ```
+Vite levantará el frontend en `http://localhost:5173`. El componente `OrdersLive` detecta si corre en localhost y, en ese caso, usa directamente los endpoints públicos (`https://digitaltex.ar/...`). En producción se esperan proxys relativos (`/api/os`, `/realtime/stream?...`).
 
-### Compile and Minify for Production
+| Script            | Descripción                                   |
+|-------------------|-----------------------------------------------|
+| `npm run dev`     | Desarrollo con HMR de Vite.                    |
+| `npm run build`   | Compila la aplicación lista para producción.   |
+| `npm run preview` | Sirve la build de producción para verificación |
 
-```sh
-npm run build
-```
+## Estructura relevante
+- `src/components/OrdersLive.vue`: capa de presentación del panel principal.
+- `src/composables/orders/useOrdersLive.js`: estado reactivo + SSE + métricas.
+- `src/components/orders/`: tabla, modal, toolbar e insights reutilizables.
+- `src/components/RightMenu.vue`: navegación lateral y status del sistema.
+
+## Personalización
+- Ajustá los endpoints (API, SSE, create/update) pasando overrides a `useOrdersLive` si el backend cambia de host.
+- `OrdersInsights` expone props para formatear moneda, por lo que podés internacionalizar el panel desde el componente padre.
+- Para agregar nuevas secciones en la barra lateral basta con sumar objetos al arreglo `sections` en `RightMenu.vue`.
+
+## Notas de desarrollo
+- El proyecto usa `type: module`, por lo que los scripts de Node auxiliares deben terminar en `.cjs` o usar import/export.
+- En Windows puede ser necesario habilitar la ejecución de scripts para correr `npm run build` desde PowerShell (`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`).
+
 # os-live-vue
