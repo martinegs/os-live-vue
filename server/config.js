@@ -47,6 +47,7 @@ export const config = Object.freeze({
   },
   tables: {
     orders: sanitizeTableName(process.env.MYSQL_ORDERS_TABLE, "os"),
+    payments: sanitizeTableName(process.env.MYSQL_PAYMENTS_TABLE, "pagos"),
   },
   sse: {
     pingInterval: toNumber(process.env.SSE_PING_INTERVAL_MS, 25000),

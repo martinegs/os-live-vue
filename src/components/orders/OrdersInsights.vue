@@ -3,26 +3,26 @@
     <header class="insights-header">
       <h4>Resumen en vivo</h4>
       <span>
-        {{ stats.totalOrdenes ?? 0 }} ordenes -
-        {{ currency(stats.totalFacturado) }} facturado
+        {{ payments.operaciones }} pagos -
+        {{ currency(payments.total) }} recaudado
       </span>
     </header>
 
     <div class="insights-grid">
       <div class="insight-card">
-        <span class="insight-label">Efectivo</span>
-        <strong class="insight-value">{{ currency(stats.totalEfectivo) }}</strong>
-        <span class="insight-sub">Saldo pendiente hoy: {{ currency(stats.totalPendiente) }}</span>
+        <span class="insight-label">Adelantos</span>
+        <strong class="insight-value">{{ currency(payments.adelantos.totalNeto) }}</strong>
+        <span class="insight-sub">Operaciones: {{ payments.adelantos.operaciones }}</span>
+      </div>
+      <div class="insight-card">
+        <span class="insight-label">Area Clientes</span>
+        <strong class="insight-value">{{ currency(payments.areaClientes.totalNeto) }}</strong>
+        <span class="insight-sub">Operaciones: {{ payments.areaClientes.operaciones }}</span>
       </div>
       <div class="insight-card">
         <span class="insight-label">Mercado Pago</span>
-        <strong class="insight-value">{{ currency(stats.totalMercadoPago) }}</strong>
-        <span class="insight-sub">Operaciones MP: {{ stats.mercadoPagoCount ?? 0 }}</span>
-      </div>
-      <div class="insight-card">
-        <span class="insight-label">Metros en proceso</span>
-        <strong class="insight-value">{{ stats.totalMetros ?? 0 }}</strong>
-        <span class="insight-sub">{{ stats.ordenesConMetros ?? 0 }} ordenes con metros</span>
+        <strong class="insight-value">{{ currency(payments.mp.totalNeto) }}</strong>
+        <span class="insight-sub">Operaciones: {{ payments.mp.operaciones }}</span>
       </div>
     </div>
 
@@ -101,34 +101,63 @@
 </template>
 
 <script setup>
-// Small formatting helper keeps the template tidy while relying on the formatter passed from the parent.
-const props = defineProps({
-  stats: {
-    type: Object,
-    required: true,
-  },
-  estadoChartData: {
-    type: Array,
-    default: () => [],
-  },
-  estadoPieSegments: {
-    type: Array,
-    default: () => [],
-  },
-  pagoChartData: {
-    type: Array,
-    default: () => [],
-  },
-  formatCurrency: {
-    type: Function,
-    default: (value) => value,
-  },
-});
+  import { computed } from "vue";
 
-function currency(value) {
-  return props.formatCurrency(value ?? 0);
-}
-</script>
+  // Small formatting helper keeps the template tidy while relying on the formatter passed from the parent.
+  const paymentDefaults = Object.freeze({
+    origen: "",
+    totalNeto: 0,
+    totalBruto: 0,
+    totalDescuento: 0,
+    operaciones: 0,
+  });
+
+  const props = defineProps({
+    stats: {
+      type: Object,
+      required: true,
+    },
+    paymentsSummary: {
+      type: Object,
+      default: () => ({}),
+    },
+    estadoChartData: {
+      type: Array,
+      default: () => [],
+    },
+    estadoPieSegments: {
+      type: Array,
+      default: () => [],
+    },
+    pagoChartData: {
+      type: Array,
+      default: () => [],
+    },
+    formatCurrency: {
+      type: Function,
+      default: (value) => value,
+    },
+  });
+
+  const payments = computed(() => {
+    const summary = props.paymentsSummary ?? {};
+    const withDefaults = (item) => ({ ...paymentDefaults, ...(item || {}) });
+
+    return {
+      total: Number(summary.total ?? summary.totalNeto ?? 0) || 0,
+      totalBruto: Number(summary.totalBruto ?? 0) || 0,
+      totalDescuento: Number(summary.totalDescuento ?? 0) || 0,
+      operaciones: Number(summary.operaciones ?? 0) || 0,
+      mp: withDefaults(summary.mp),
+      adelantos: withDefaults(summary.adelantos),
+      areaClientes: withDefaults(summary.areaClientes),
+    };
+  });
+  
+  function currency(value) {
+    return props.formatCurrency(value ?? 0);
+  }
+  </script>
 
 <style scoped>
 .insights {

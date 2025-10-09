@@ -7,7 +7,9 @@ import { pool, verifyConnection } from "./db.js";
 import { httpLogger } from "./middleware/logger.js";
 import { createRealtimeHub } from "./realtime.js";
 import { createOrderService } from "./services/orderService.js";
+import { createPaymentService } from "./services/paymentService.js";
 import { createOrdersRouter } from "./routes/orders.js";
+import { createPaymentsRouter } from "./routes/payments.js";
 import { createHealthRouter } from "./routes/health.js";
 
 const require = createRequire(import.meta.url);
@@ -43,6 +45,10 @@ const orderService = createOrderService({
   ordersTable: config.tables.orders,
   activityTsColumn: config.activityTsColumn,
 });
+const paymentService = createPaymentService({
+  pool,
+  paymentsTable: config.tables.payments,
+});
 
 app.use(httpLogger());
 
@@ -62,6 +68,10 @@ app.use(
 app.use(
   "/api/os",
   createOrdersRouter({ orderService, broadcast: realtime.broadcast })
+);
+app.use(
+  "/api/pagos",
+  createPaymentsRouter({ paymentService })
 );
 app.use("/realtime", realtime.router);
 

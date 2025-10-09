@@ -15,13 +15,13 @@
         <div class="ops-card">
           <span class="ops-card-label">Recaudado hoy</span>
           <strong class="ops-card-value">
-            {{ formatArs(resumenHoy.total) }}
+            {{ formatArs(resumenPagos.total) }}
           </strong>
         </div>
         <div class="ops-card">
-          <span class="ops-card-label">Metros hoy</span>
+          <span class="ops-card-label">Metros</span>
           <strong class="ops-card-value">
-            {{ formatMetros(resumenHoy.metros) }}
+            {{ formatArs(resumenPagos.areaClientes.totalNeto) }}
           </strong>
         </div>
         <div class="ops-card">
@@ -64,6 +64,7 @@
 
     <OrdersInsights
       :stats="stats"
+      :payments-summary="resumenPagos"
       :estado-chart-data="estadoChartData"
       :estado-pie-segments="estadoPieSegments"
       :pago-chart-data="pagoChartData"
@@ -85,48 +86,39 @@ const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? (isDev ? "http://localhost:
 const baseApi = apiOrigin.replace(/\/$/, "");
 
 // Hook into the composable so the view stays declarative and the networking logic lives in one place.
-const {
-  q,
-  alertsCount,
-  formattedAlerts,
-  estadoColors,
-  pagoColors,
-  resumenHoy,
-  visibleRows,
-  stats,
-  estadoChartData,
-  estadoPieSegments,
-  pagoChartData,
+  const {
+    q,
+    alertsCount,
+    formattedAlerts,
+    estadoColors,
+    pagoColors,
+    resumenPagos,
+    visibleRows,
+    stats,
+    estadoChartData,
+    estadoPieSegments,
+    pagoChartData,
   editing,
   openEditor,
   openCreator,
   closeEditor,
   submitForm,
   loadMoreRows,
-} = useOrdersLive({
-  apiUrl: `${baseApi}/api/os`,
-  sseUrl: `${baseApi}/realtime/stream?channel=os`,
-  updateUrl: `${baseApi}/api/os/update`,
-  createUrl: `${baseApi}/api/os/create`,
-  chunkSize: 30,
-});
+  } = useOrdersLive({
+    apiUrl: `${baseApi}/api/os`,
+    sseUrl: `${baseApi}/realtime/stream?channel=os`,
+    updateUrl: `${baseApi}/api/os/update`,
+    createUrl: `${baseApi}/api/os/create`,
+    paymentsUrl: `${baseApi}/api/pagos/today`,
+    chunkSize: 30,
+  });
 
-const fmtARS = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 2,
-});
-const formatArs = (value) => fmtARS.format(value ?? 0);
-
-// Keep formatting logic local to the view to control presentation nuances.
-function formatMetros(value) {
-  const num = Number(value) || 0;
-  const options =
-    num % 1 === 0
-      ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
-      : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  return num.toLocaleString("es-AR", options);
-}
+  const fmtARS = new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 2,
+  });
+  const formatArs = (value) => fmtARS.format(value ?? 0);
 </script>
 
 <style scoped>

@@ -248,6 +248,7 @@ export function useOrdersLive(options = {}) {
     sseUrl = "/realtime/stream?channel=os",
     updateUrl = "/api/os/update",
     createUrl = "/api/os/create",
+    paymentsUrl = "/api/pagos/today",
     chunkSize = DEFAULT_CHUNK_SIZE,
   } = options;
 
@@ -256,6 +257,19 @@ export function useOrdersLive(options = {}) {
   const sseStatus = ref("desconectado");
   const alertsCount = ref(0);
   const formattedAlerts = computed(() => alertsCount.value.toString().padStart(2, "0"));
+
+  const paymentsStatus = ref("idle");
+  const paymentsError = ref("");
+  const paymentsSummary = reactive({
+    date: "",
+    items: [],
+    aggregate: {
+      totalNeto: 0,
+      totalBruto: 0,
+      totalDescuento: 0,
+      operaciones: 0,
+    },
+  });
 
   const query = ref("");
   // Keep rows indexed by id so SSE partial payloads can be merged efficiently.
@@ -274,6 +288,7 @@ export function useOrdersLive(options = {}) {
   let es;
   // Small timer to clear the "blink" flag after highlighting new/updated rows.
   let ticker;
+  let paymentsInterval;
 
   function setApiStatus(value, meta) {
     if (apiStatus.value === value) return;
@@ -320,6 +335,50 @@ export function useOrdersLive(options = {}) {
       console.error("[OrdersLive] Error al cargar API", error);
       setApiStatus("desconectado", "(fallo API)");
       setEstadoUi(`error API (${error instanceof Error ? error.message : "desconocido"})`);
+    }
+  }
+
+  async function cargarPagos() {
+    if (!paymentsUrl) {
+      return;
+    }
+    console.info("[OrdersLive] Cargando resumen de pagos", { paymentsUrl });
+    paymentsStatus.value = "cargando";
+    paymentsError.value = "";
+    try {
+      const res = await fetch(paymentsUrl, { credentials: "omit" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      paymentsSummary.date = typeof data?.date === "string" ? data.date : "";
+
+      const aggregate = data?.aggregate ?? {};
+      paymentsSummary.aggregate.totalNeto = Number(aggregate.totalNeto) || 0;
+      paymentsSummary.aggregate.totalBruto = Number(aggregate.totalBruto) || 0;
+      paymentsSummary.aggregate.totalDescuento = Number(aggregate.totalDescuento) || 0;
+      paymentsSummary.aggregate.operaciones = Number(aggregate.operaciones) || 0;
+
+      const items = Array.isArray(data?.items) ? data.items : [];
+      paymentsSummary.items = items.map((item) => ({
+        key: String(item?.key || "").toLowerCase(),
+        origen: String(item?.origen || ""),
+        operaciones: Number(item?.operaciones) || 0,
+        totalBruto: Number(item?.totalBruto) || 0,
+        totalDescuento: Number(item?.totalDescuento) || 0,
+        totalNeto: Number(item?.totalNeto) || 0,
+      }));
+
+      paymentsStatus.value = "conectado";
+    } catch (error) {
+      console.error("[OrdersLive] Error al cargar resumen de pagos", error);
+      paymentsSummary.date = "";
+      paymentsSummary.aggregate.totalNeto = 0;
+      paymentsSummary.aggregate.totalBruto = 0;
+      paymentsSummary.aggregate.totalDescuento = 0;
+      paymentsSummary.aggregate.operaciones = 0;
+      paymentsSummary.items = [];
+      paymentsStatus.value = "error";
+      paymentsError.value = error instanceof Error ? error.message : "desconocido";
     }
   }
 
@@ -374,6 +433,22 @@ export function useOrdersLive(options = {}) {
     }, 500);
   }
 
+  function startPaymentsPolling() {
+    if (paymentsInterval) return;
+    paymentsInterval = setInterval(() => {
+      cargarPagos().catch((error) => {
+        console.warn("[OrdersLive] Error en refresco de pagos", error);
+      });
+    }, 60_000);
+  }
+
+  function stopPaymentsPolling() {
+    if (paymentsInterval) {
+      clearInterval(paymentsInterval);
+      paymentsInterval = undefined;
+    }
+  }
+
   function stopRealtime() {
     if (es) {
       es.close();
@@ -383,6 +458,7 @@ export function useOrdersLive(options = {}) {
       clearInterval(ticker);
       ticker = undefined;
     }
+    stopPaymentsPolling();
   }
 
   function openEditor(row) {
@@ -602,10 +678,50 @@ export function useOrdersLive(options = {}) {
     };
   });
 
-  const resumenHoy = computed(() => ({
-    total: stats.value.totalRecaudado ?? 0,
-    metros: stats.value.totalMetros ?? 0,
-  }));
+  const resumenPagos = computed(() => {
+    const byKey = new Map();
+    for (const item of paymentsSummary.items) {
+      const key = String(item?.key || item?.origen || "").toLowerCase();
+      if (!key) continue;
+      byKey.set(key, {
+        origen: item?.origen || "",
+        key,
+        totalNeto: Number(item?.totalNeto) || 0,
+        totalBruto: Number(item?.totalBruto) || 0,
+        totalDescuento: Number(item?.totalDescuento) || 0,
+        operaciones: Number(item?.operaciones) || 0,
+      });
+    }
+
+    const pick = (...keys) => {
+      for (const candidate of keys) {
+        const normalized = String(candidate || "").toLowerCase();
+        if (!normalized) continue;
+        if (byKey.has(normalized)) {
+          return { ...byKey.get(normalized) };
+        }
+      }
+      return {
+        origen: keys[0] || "",
+        key: String(keys[0] || "").toLowerCase(),
+        totalNeto: 0,
+        totalBruto: 0,
+        totalDescuento: 0,
+        operaciones: 0,
+      };
+    };
+
+    return {
+      date: paymentsSummary.date || "",
+      total: Number(paymentsSummary.aggregate.totalNeto) || 0,
+      totalBruto: Number(paymentsSummary.aggregate.totalBruto) || 0,
+      totalDescuento: Number(paymentsSummary.aggregate.totalDescuento) || 0,
+      operaciones: Number(paymentsSummary.aggregate.operaciones) || 0,
+      mp: pick("mp", "mercado_pago", "mercadopago"),
+      adelantos: pick("adelanto", "adelantos"),
+      areaClientes: pick("area_clientes", "area_cliente", "areacliente", "clientes_area"),
+    };
+  });
 
   const estadoChartData = computed(() => {
     const total = stats.value.totalOrdenes || 1;
@@ -671,9 +787,10 @@ export function useOrdersLive(options = {}) {
 
   onMounted(async () => {
     console.info("[OrdersLive] Composable montado");
-    await cargarAPI();
+    await Promise.all([cargarAPI(), cargarPagos()]);
     conectarSSE();
     startTicker();
+    startPaymentsPolling();
   });
 
   onBeforeUnmount(() => {
@@ -705,7 +822,10 @@ export function useOrdersLive(options = {}) {
     estadoColors: ESTADO_COLORS,
     pagoColors: PAGO_COLORS,
     q: query,
-    resumenHoy,
+    resumenPagos,
+    paymentsStatus,
+    paymentsError,
+    refreshPagos: cargarPagos,
     visibleRows,
     stats,
     estadoChartData,
