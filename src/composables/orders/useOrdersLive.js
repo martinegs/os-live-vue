@@ -248,7 +248,6 @@ export function useOrdersLive(options = {}) {
     sseUrl = "/realtime/stream?channel=os",
     updateUrl = "/api/os/update",
     createUrl = "/api/os/create",
-    paymentsUrl = "/api/pagos/today",
     chunkSize = DEFAULT_CHUNK_SIZE,
   } = options;
 
@@ -257,19 +256,6 @@ export function useOrdersLive(options = {}) {
   const sseStatus = ref("desconectado");
   const alertsCount = ref(0);
   const formattedAlerts = computed(() => alertsCount.value.toString().padStart(2, "0"));
-
-  const paymentsStatus = ref("idle");
-  const paymentsError = ref("");
-  const paymentsSummary = reactive({
-    date: "",
-    items: [],
-    aggregate: {
-      totalNeto: 0,
-      totalBruto: 0,
-      totalDescuento: 0,
-      operaciones: 0,
-    },
-  });
 
   const query = ref("");
   // Keep rows indexed by id so SSE partial payloads can be merged efficiently.
@@ -288,7 +274,6 @@ export function useOrdersLive(options = {}) {
   let es;
   // Small timer to clear the "blink" flag after highlighting new/updated rows.
   let ticker;
-  let paymentsInterval;
 
   function setApiStatus(value, meta) {
     if (apiStatus.value === value) return;
@@ -335,50 +320,6 @@ export function useOrdersLive(options = {}) {
       console.error("[OrdersLive] Error al cargar API", error);
       setApiStatus("desconectado", "(fallo API)");
       setEstadoUi(`error API (${error instanceof Error ? error.message : "desconocido"})`);
-    }
-  }
-
-  async function cargarPagos() {
-    if (!paymentsUrl) {
-      return;
-    }
-    console.info("[OrdersLive] Cargando resumen de pagos", { paymentsUrl });
-    paymentsStatus.value = "cargando";
-    paymentsError.value = "";
-    try {
-      const res = await fetch(paymentsUrl, { credentials: "omit" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      paymentsSummary.date = typeof data?.date === "string" ? data.date : "";
-
-      const aggregate = data?.aggregate ?? {};
-      paymentsSummary.aggregate.totalNeto = Number(aggregate.totalNeto) || 0;
-      paymentsSummary.aggregate.totalBruto = Number(aggregate.totalBruto) || 0;
-      paymentsSummary.aggregate.totalDescuento = Number(aggregate.totalDescuento) || 0;
-      paymentsSummary.aggregate.operaciones = Number(aggregate.operaciones) || 0;
-
-      const items = Array.isArray(data?.items) ? data.items : [];
-      paymentsSummary.items = items.map((item) => ({
-        key: String(item?.key || "").toLowerCase(),
-        origen: String(item?.origen || ""),
-        operaciones: Number(item?.operaciones) || 0,
-        totalBruto: Number(item?.totalBruto) || 0,
-        totalDescuento: Number(item?.totalDescuento) || 0,
-        totalNeto: Number(item?.totalNeto) || 0,
-      }));
-
-      paymentsStatus.value = "conectado";
-    } catch (error) {
-      console.error("[OrdersLive] Error al cargar resumen de pagos", error);
-      paymentsSummary.date = "";
-      paymentsSummary.aggregate.totalNeto = 0;
-      paymentsSummary.aggregate.totalBruto = 0;
-      paymentsSummary.aggregate.totalDescuento = 0;
-      paymentsSummary.aggregate.operaciones = 0;
-      paymentsSummary.items = [];
-      paymentsStatus.value = "error";
-      paymentsError.value = error instanceof Error ? error.message : "desconocido";
     }
   }
 
@@ -433,22 +374,6 @@ export function useOrdersLive(options = {}) {
     }, 500);
   }
 
-  function startPaymentsPolling() {
-    if (paymentsInterval) return;
-    paymentsInterval = setInterval(() => {
-      cargarPagos().catch((error) => {
-        console.warn("[OrdersLive] Error en refresco de pagos", error);
-      });
-    }, 60_000);
-  }
-
-  function stopPaymentsPolling() {
-    if (paymentsInterval) {
-      clearInterval(paymentsInterval);
-      paymentsInterval = undefined;
-    }
-  }
-
   function stopRealtime() {
     if (es) {
       es.close();
@@ -458,7 +383,6 @@ export function useOrdersLive(options = {}) {
       clearInterval(ticker);
       ticker = undefined;
     }
-    stopPaymentsPolling();
   }
 
   function openEditor(row) {
@@ -599,55 +523,56 @@ export function useOrdersLive(options = {}) {
     });
   });
 
+  const resumenHoy = computed(() => {
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().slice(0, 10);
+    let total = 0;
+    let metros = 0;
+
+    for (const row of filasOrdenadas.value) {
+      const fecha = row.fechaIngreso ?? row.dataInicial ?? row.ts ?? null;
+      if (!fecha) continue;
+      const fechaObj = new Date(fecha);
+      if (Number.isNaN(fechaObj.getTime())) continue;
+      const fechaStr = fechaObj.toISOString().slice(0, 10);
+      if (fechaStr === hoyStr) {
+        total += Number(row.valorPagado ?? 0) || 0;
+        const metrosRow = Number(row.metros ?? 0);
+        if (Number.isFinite(metrosRow)) metros += metrosRow;
+      }
+    }
+
+    return { total, metros };
+  });
+
   const visibleRows = computed(() => {
     if (!visibleCount.value) return filasOrdenadas.value.slice(0, chunkSize);
     return filasOrdenadas.value.slice(0, visibleCount.value);
   });
 
   const stats = computed(() => {
-    const hoyStr = new Date().toISOString().slice(0, 10);
     const rows = filasOrdenadas.value;
-    let totalOrdenes = 0;
+    const totalOrdenes = rows.length;
     let totalFacturado = 0;
+    let totalPagado = 0;
     let totalPendiente = 0;
     let totalMetros = 0;
     let ordenesConMetros = 0;
-    let totalEfectivo = 0;
-    let totalMercadoPago = 0;
-    let efectivoCount = 0;
-    let mercadoPagoCount = 0;
     const estadoCount = new Map();
     const pagoCount = new Map();
 
     for (const row of rows) {
-      const fecha = row.fechaIngreso ?? row.dataInicial ?? row.ts ?? null;
-      if (!fecha) continue;
-      const fechaObj = new Date(fecha);
-      if (Number.isNaN(fechaObj.getTime())) continue;
-      const fechaStr = fechaObj.toISOString().slice(0, 10);
-      if (fechaStr !== hoyStr) continue;
-
-      totalOrdenes += 1;
-
       const valorTotal = Number(row.valorTotal ?? 0) || 0;
       const valorPagado = Number(row.valorPagado ?? 0) || 0;
       const metros = Number(row.metros ?? 0);
 
       totalFacturado += valorTotal;
+      totalPagado += valorPagado;
       totalPendiente += Math.max(valorTotal - valorPagado, 0);
 
       if (Number.isFinite(metros) && metros > 0) {
         totalMetros += metros;
         ordenesConMetros += 1;
-      }
-
-      const esMp = Boolean(row.hayNOP || row.esAreaClientes);
-      if (esMp) {
-        totalMercadoPago += valorPagado;
-        mercadoPagoCount += 1;
-      } else {
-        totalEfectivo += valorPagado;
-        efectivoCount += 1;
       }
 
       const estadoLabel = (row.status || "Sin estado").trim() || "Sin estado";
@@ -657,69 +582,21 @@ export function useOrdersLive(options = {}) {
       pagoCount.set(pagoLabel, (pagoCount.get(pagoLabel) ?? 0) + 1);
     }
 
-    const totalRecaudado = totalEfectivo + totalMercadoPago;
-    const metrosRedondeados =
-      totalMetros % 1 === 0 ? totalMetros : Number(totalMetros.toFixed(2));
+    const ticketPromedio = totalOrdenes ? totalFacturado / totalOrdenes : 0;
+    const promedioPagado = totalOrdenes ? totalPagado / totalOrdenes : 0;
 
     return {
       totalOrdenes,
       totalFacturado,
+      totalPagado,
       totalPendiente,
-      totalMetros: metrosRedondeados,
+      totalMetros: totalMetros % 1 === 0 ? totalMetros : totalMetros.toFixed(2),
       ordenesConMetros,
-      totalEfectivo,
-      totalMercadoPago,
-      totalRecaudado,
-      efectivoCount,
-      mercadoPagoCount,
+      ticketPromedio,
+      promedioPagado,
       estadoCount,
       estadoTotal: estadoCount.size,
       pagoCount,
-    };
-  });
-
-  const resumenPagos = computed(() => {
-    const byKey = new Map();
-    for (const item of paymentsSummary.items) {
-      const key = String(item?.key || item?.origen || "").toLowerCase();
-      if (!key) continue;
-      byKey.set(key, {
-        origen: item?.origen || "",
-        key,
-        totalNeto: Number(item?.totalNeto) || 0,
-        totalBruto: Number(item?.totalBruto) || 0,
-        totalDescuento: Number(item?.totalDescuento) || 0,
-        operaciones: Number(item?.operaciones) || 0,
-      });
-    }
-
-    const pick = (...keys) => {
-      for (const candidate of keys) {
-        const normalized = String(candidate || "").toLowerCase();
-        if (!normalized) continue;
-        if (byKey.has(normalized)) {
-          return { ...byKey.get(normalized) };
-        }
-      }
-      return {
-        origen: keys[0] || "",
-        key: String(keys[0] || "").toLowerCase(),
-        totalNeto: 0,
-        totalBruto: 0,
-        totalDescuento: 0,
-        operaciones: 0,
-      };
-    };
-
-    return {
-      date: paymentsSummary.date || "",
-      total: Number(paymentsSummary.aggregate.totalNeto) || 0,
-      totalBruto: Number(paymentsSummary.aggregate.totalBruto) || 0,
-      totalDescuento: Number(paymentsSummary.aggregate.totalDescuento) || 0,
-      operaciones: Number(paymentsSummary.aggregate.operaciones) || 0,
-      mp: pick("mp", "mercado_pago", "mercadopago"),
-      adelantos: pick("adelanto", "adelantos"),
-      areaClientes: pick("area_clientes", "area_cliente", "areacliente", "clientes_area"),
     };
   });
 
@@ -787,10 +664,9 @@ export function useOrdersLive(options = {}) {
 
   onMounted(async () => {
     console.info("[OrdersLive] Composable montado");
-    await Promise.all([cargarAPI(), cargarPagos()]);
+    await cargarAPI();
     conectarSSE();
     startTicker();
-    startPaymentsPolling();
   });
 
   onBeforeUnmount(() => {
@@ -822,10 +698,7 @@ export function useOrdersLive(options = {}) {
     estadoColors: ESTADO_COLORS,
     pagoColors: PAGO_COLORS,
     q: query,
-    resumenPagos,
-    paymentsStatus,
-    paymentsError,
-    refreshPagos: cargarPagos,
+    resumenHoy,
     visibleRows,
     stats,
     estadoChartData,
@@ -839,4 +712,3 @@ export function useOrdersLive(options = {}) {
     loadMoreRows,
   };
 }
-
