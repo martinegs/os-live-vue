@@ -1,80 +1,103 @@
+/* Bloqueo de UI para login */
+.ui-blocker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10,16,40,0.96);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.3rem;
+  letter-spacing: 0.02em;
+}
 <template>
   <div class="wrap">
     <h2 class="title">Ordenes</h2>
 
-    <section class="ops-overview">
-      <div class="ops-brand">
-        <div class="ops-logo">DT</div>
-        <div class="ops-text">
-          <p class="ops-name">DigitalTex Ops</p>
-          <p class="ops-tagline">Monitoreo en tiempo real</p>
-          <span class="ops-status">Sistema en línea</span>
+    <!-- Bloqueo de UI si no autenticado -->
+    <div v-if="!authenticated" class="ui-blocker">
+      <p>Por favor, inicia sesión para continuar.</p>
+    </div>
+    <div v-else>
+      <section class="ops-overview">
+        <div class="ops-brand">
+          <div class="ops-logo">DT</div>
+          <div class="ops-text">
+            <p class="ops-name">DigitalTex Ops</p>
+            <p class="ops-tagline">Monitoreo en tiempo real</p>
+            <span class="ops-status">Sistema en línea</span>
+          </div>
+        </div>
+        <div class="ops-metrics">
+          <div class="ops-card">
+            <span class="ops-card-label">Recaudado hoy</span>
+            <strong class="ops-card-value">{{ formatArs(resumenPagos?.aggregate?.totalNeto ?? 0) }}</strong>
+          </div>
+          <div class="ops-card">
+            <span class="ops-card-label">Metros</span>
+            <strong class="ops-card-value">{{ resumenHoy.metros ?? 0 }}</strong>
+          </div>
+          <div class="ops-card">
+            <span class="ops-card-label">Alertas</span>
+            <strong class="ops-card-value" :class="{ 'ops-card-value--warn': alertsCount > 0 }">{{ formattedAlerts }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <div class="main-grid">
+        <div class="main-col">
+          <OrdersToolbar v-model="q" placeholder="Buscar (OT, estado, pago, lugar, metros)" @create="openCreator" />
+
+          <section class="region">
+            <OrdersTable
+              :rows="visibleRows"
+              :estado-colors="estadoColors"
+              :pago-colors="pagoColors"
+              @edit="openEditor"
+              @load-more="loadMoreRows"
+            />
+          </section>
+
+          <transition name="modal">
+            <OrdersModal v-if="editing.open" :editing="editing" @close="closeEditor" @submit="submitForm" />
+          </transition>
+
+          <OrdersInsights
+            :stats="stats"
+              :stats-today="statsToday"
+            :payments-summary="resumenPagos"
+            :estado-chart-data="estadoChartDataToday"
+            :estado-pie-segments="estadoPieSegmentsToday"
+            :pago-chart-data="pagoChartDataToday"
+            :format-currency="formatArs"
+            :rows="visibleRows"
+            :resumen-hoy="resumenHoy"
+          />
         </div>
       </div>
-      <div class="ops-metrics">
-        <div class="ops-card">
-          <span class="ops-card-label">Recaudado hoy</span>
-          <strong class="ops-card-value">
-            {{ formatArs(resumenPagos.total) }}
-          </strong>
-        </div>
-        <div class="ops-card">
-          <span class="ops-card-label">Metros</span>
-          <strong class="ops-card-value">
-            {{ formatArs(resumenPagos.areaClientes.totalNeto) }}
-          </strong>
-        </div>
-        <div class="ops-card">
-          <span class="ops-card-label">Alertas</span>
-          <strong
-            class="ops-card-value"
-            :class="{ 'ops-card-value--warn': alertsCount > 0 }"
-          >
-            {{ formattedAlerts }}
-          </strong>
-        </div>
-      </div>
-    </section>
+    </div>
 
-    <OrdersToolbar
-      v-model="q"
-      placeholder="Buscar (OT, estado, pago, lugar, metros)"
-      @create="openCreator"
-    />
+    <!-- Login desactivado: el placeholder fue removido para mostrar la UI siempre. El modal sigue presente pero no se abre automáticamente. -->
 
-    <section class="region">
-
-      <OrdersTable
-        :rows="visibleRows"
-        :estado-colors="estadoColors"
-        :pago-colors="pagoColors"
-        @edit="openEditor"
-        @load-more="loadMoreRows"
-      />
-    </section>
-
+    <!-- Modal de login (siempre disponible) -->
     <transition name="modal">
-      <OrdersModal
-        v-if="editing.open"
-        :editing="editing"
-        @close="closeEditor"
-        @submit="submitForm"
-      />
+      <LoginModal v-if="showLogin" @success="onLoginSuccess" @close="onLoginClose" />
     </transition>
-
-    <OrdersInsights
-      :stats="stats"
-      :payments-summary="resumenPagos"
-      :estado-chart-data="estadoChartData"
-      :estado-pie-segments="estadoPieSegments"
-      :pago-chart-data="pagoChartData"
-      :format-currency="formatArs"
-    />
   </div>
 </template>
 
 <script setup>
+import KpiPanel from "./KpiPanel.vue";
+import KpiLugares from "./KpiLugares.vue";
 import OrdersInsights from "./orders/OrdersInsights.vue";
+import LoginModal from "./LoginModal.vue";
+import { isAuthenticated, getSessionRemainingMs, logout, getCurrentUser } from "../services/authService";
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import OrdersModal from "./orders/OrdersModal.vue";
 import OrdersTable from "./orders/OrdersTable.vue";
 import OrdersToolbar from "./orders/OrdersToolbar.vue";
@@ -93,22 +116,22 @@ const baseApi = apiOrigin.replace(/\/$/, "");
     estadoColors,
     pagoColors,
     resumenPagos,
+    resumenHoy,
     visibleRows,
     stats,
-    estadoChartData,
-    estadoPieSegments,
-    pagoChartData,
-  editing,
-  openEditor,
-  openCreator,
-  closeEditor,
-  submitForm,
-  loadMoreRows,
+      statsToday,
+  estadoChartDataToday,
+  estadoPieSegmentsToday,
+  pagoChartDataToday,
+    editing,
+    openEditor,
+    openCreator,
+    closeEditor,
+    submitForm,
+    loadMoreRows,
   } = useOrdersLive({
     apiUrl: `${baseApi}/api/os`,
     sseUrl: `${baseApi}/realtime/stream?channel=os`,
-    updateUrl: `${baseApi}/api/os/update`,
-    createUrl: `${baseApi}/api/os/create`,
     paymentsUrl: `${baseApi}/api/pagos/today`,
     chunkSize: 30,
   });
@@ -119,6 +142,55 @@ const baseApi = apiOrigin.replace(/\/$/, "");
     maximumFractionDigits: 2,
   });
   const formatArs = (value) => fmtARS.format(value ?? 0);
+  
+  // --- Session / Login modal control (habilitado)
+  const showLogin = ref(false);
+  const authenticated = ref(isAuthenticated());
+  let logoutTimer = null;
+
+  function scheduleAutoLogout() {
+    if (logoutTimer) {
+      clearTimeout(logoutTimer);
+      logoutTimer = null;
+    }
+    const remaining = getSessionRemainingMs();
+    if (remaining > 0) {
+      logoutTimer = setTimeout(() => {
+        logout();
+        authenticated.value = false;
+        showLogin.value = true;
+      }, remaining);
+    } else {
+      logout();
+      authenticated.value = false;
+      showLogin.value = true;
+    }
+  }
+
+  function onLoginSuccess(user) {
+    showLogin.value = false;
+    authenticated.value = true;
+    scheduleAutoLogout();
+    console.log('login success', user);
+  }
+
+  function onLoginClose() {
+    showLogin.value = false;
+  }
+
+  onMounted(() => {
+    if (!isAuthenticated()) {
+      authenticated.value = false;
+      showLogin.value = true;
+    } else {
+      authenticated.value = true;
+      scheduleAutoLogout();
+    }
+  });
+
+  onBeforeUnmount(() => {
+    if (logoutTimer) clearTimeout(logoutTimer);
+  });
 </script>
 
 <style scoped>
@@ -277,6 +349,10 @@ const baseApi = apiOrigin.replace(/\/$/, "");
   display: flex;
   flex-direction: column;
 }
+
+.main-grid{display:flex;gap:18px}
+.main-col{flex:1}
+.side-col{width:360px}
 
 .region-title {
   display: flex;

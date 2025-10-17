@@ -2,6 +2,11 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 
 const DEFAULT_CHUNK_SIZE = 30;
 
+const LOCATION_LABELS = Object.freeze({
+  LM: "Mendoza",
+  LC: "Capital Federal",
+});
+
 export const ESTADO_COLORS = Object.freeze({
   Presupuesto: "#CDB380",
   Cancelado: "#ef4444",
@@ -97,6 +102,7 @@ function fromAPI(row) {
     descripcionProducto: row.descripcionProducto ?? row.observacoes ?? null,
     clase: row.clase ?? row.defeito ?? "seleccione",
     informacionGeneral: row.informacionGeneral ?? row.laudoTecnico ?? null,
+  fechaPago: row.fechaPago ?? null,
     esAreaClientes: Boolean(row.esAreaClientes ?? (Number(row.pagadoAreaClientes ?? 0) === 1)),
     hayNOP: Boolean(row.hayNOP ?? row.numeroOperacion),
     activityTs: -Infinity,
@@ -162,6 +168,9 @@ function fromEvent(msg, tipo) {
 
   const fechaIngreso = coalesce(msg.fechaIngreso_despues, msg.fechaIngreso, msg.dataInicial);
   if (fechaIngreso !== undefined) result.fechaIngreso = fechaIngreso;
+
+  const fechaPago = coalesce(msg.fechaPago_despues, msg.fechaPago);
+  if (fechaPago !== undefined) result.fechaPago = fechaPago;
 
   const fechaEntrega = coalesce(msg.fechaEntrega_despues, msg.fechaEntrega, msg.dataFinal);
   if (fechaEntrega !== undefined) result.fechaEntrega = fechaEntrega;
@@ -250,11 +259,13 @@ export function useOrdersLive(options = {}) {
     createUrl = "/api/os/create",
     chunkSize = DEFAULT_CHUNK_SIZE,
   } = options;
+  const paymentsUrl = options.paymentsUrl || "/api/pagos/today";
 
   const estado = ref("cargando...");
   const apiStatus = ref("desconectado");
   const sseStatus = ref("desconectado");
   const alertsCount = ref(0);
+  const resumenPagos = ref({ date: '', items: [], aggregate: { totalNeto: 0, totalBruto: 0, totalDescuento: 0, operaciones: 0 } });
   const formattedAlerts = computed(() => alertsCount.value.toString().padStart(2, "0"));
 
   const query = ref("");
@@ -316,10 +327,37 @@ export function useOrdersLive(options = {}) {
       console.info("[OrdersLive] API cargada", { rows: rows.length });
       setApiStatus("conectado", "(respuesta inicial)");
       setEstadoUi("cargando stream...", "(post API)");
+      // Cargar resumen de pagos del día (hoy)
+      try {
+        const hoy = new Date();
+        const hoyStr = hoy.toISOString().slice(0, 10);
+        await fetchPaymentsSummary(hoyStr);
+      } catch (err) {
+        console.warn('[OrdersLive] fallo cargar resumen pagos', err);
+      }
     } catch (error) {
       console.error("[OrdersLive] Error al cargar API", error);
       setApiStatus("desconectado", "(fallo API)");
       setEstadoUi(`error API (${error instanceof Error ? error.message : "desconocido"})`);
+    }
+  }
+
+  async function fetchPaymentsSummary(dateStr) {
+    try {
+      const baseApi = (typeof window !== 'undefined' && window.location.hostname === 'localhost') ? '' : '';
+      // paymentsUrl may be a full URL or a path
+      const separator = paymentsUrl.includes('?') ? '&' : '?';
+      const url = `${paymentsUrl}${separator}date=${encodeURIComponent(dateStr)}`;
+      const res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      resumenPagos.value = body || resumenPagos.value;
+      console.info('[OrdersLive] resumenPagos cargado', { date: dateStr, aggregate: resumenPagos.value.aggregate });
+      return resumenPagos.value;
+    } catch (err) {
+      console.warn('[OrdersLive] error fetchPaymentsSummary', err);
+      resumenPagos.value = resumenPagos.value || { date: dateStr, items: [], aggregate: { totalNeto: 0 } };
+      return resumenPagos.value;
     }
   }
 
@@ -545,6 +583,112 @@ export function useOrdersLive(options = {}) {
     return { total, metros };
   });
 
+  // Filas de HOY para gráficos (usa fechaIngreso o ts, en horario local)
+  const todaysRowsForCharts = computed(() => {
+    const hoy = new Date();
+    const tzOffsetMs = hoy.getTimezoneOffset() * 60 * 1000;
+    const localMidnight = new Date(hoy.getTime() - tzOffsetMs);
+    const hoyStr = localMidnight.toISOString().slice(0, 10);
+
+    const rows = filasOrdenadas.value;
+    const out = [];
+    for (const row of rows) {
+      const fecha = row.ts ?? row.fechaIngreso ?? row.dataInicial ?? null;
+      if (!fecha) continue;
+      const d = new Date(fecha);
+      if (Number.isNaN(d.getTime())) continue;
+      const local = new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+      if (local === hoyStr) out.push(row);
+    }
+    return out;
+  });
+
+  const statsToday = computed(() => {
+    const rows = todaysRowsForCharts.value;
+    const totalOrdenes = rows.length;
+    let totalFacturado = 0;
+    let totalPagado = 0;
+    let totalPendiente = 0;
+    let totalMetros = 0;
+    let ordenesConMetros = 0;
+    const estadoCount = new Map();
+    const pagoCount = new Map();
+
+    for (const row of rows) {
+      const valorTotal = Number(row.valorTotal ?? 0) || 0;
+      const valorPagado = Number(row.valorPagado ?? 0) || 0;
+      const metros = Number(row.metros ?? 0);
+
+      totalFacturado += valorTotal;
+      totalPagado += valorPagado;
+      totalPendiente += Math.max(valorTotal - valorPagado, 0);
+
+      if (Number.isFinite(metros) && metros > 0) {
+        totalMetros += metros;
+        ordenesConMetros += 1;
+      }
+
+      const estadoLabel = (row.status || "Sin estado").trim() || "Sin estado";
+      estadoCount.set(estadoLabel, (estadoCount.get(estadoLabel) ?? 0) + 1);
+
+      const pagoLabel = (row.statusPago || "Sin pago").trim() || "Sin pago";
+      pagoCount.set(pagoLabel, (pagoCount.get(pagoLabel) ?? 0) + 1);
+    }
+
+    const ticketPromedio = totalOrdenes ? totalFacturado / totalOrdenes : 0;
+    const promedioPagado = totalOrdenes ? totalPagado / totalOrdenes : 0;
+
+    return {
+      totalOrdenes,
+      totalFacturado,
+      totalPagado,
+      totalPendiente,
+      totalMetros: totalMetros % 1 === 0 ? totalMetros : totalMetros.toFixed(2),
+      ordenesConMetros,
+      ticketPromedio,
+      promedioPagado,
+      estadoCount,
+      estadoTotal: estadoCount.size,
+      pagoCount,
+    };
+  });
+
+  const estadoChartDataToday = computed(() => {
+    const total = statsToday.value.totalOrdenes || 1;
+    const palette = ["#38bdf8", "#a855f7", "#f97316", "#22c55e", "#facc15", "#ef4444", "#14b8a6"];
+    let index = 0;
+    return Array.from(statsToday.value.estadoCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, cantidad]) => {
+        const color = palette[index % palette.length];
+        index += 1;
+        return {
+          label,
+          cantidad,
+          porcentaje: (cantidad / total) * 100,
+          color,
+        };
+      });
+  });
+
+  const pagoChartDataToday = computed(() => {
+    const total = statsToday.value.totalOrdenes || 1;
+    const palette = ["#22c55e", "#38bdf8", "#f97316", "#facc15", "#a855f7", "#ef4444"];
+    let index = 0;
+    return Array.from(statsToday.value.pagoCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, cantidad]) => {
+        const color = palette[index % palette.length];
+        index += 1;
+        return {
+          label,
+          cantidad,
+          porcentaje: total ? (cantidad / total) * 100 : 0,
+          color,
+        };
+      });
+  });
+
   const visibleRows = computed(() => {
     if (!visibleCount.value) return filasOrdenadas.value.slice(0, chunkSize);
     return filasOrdenadas.value.slice(0, visibleCount.value);
@@ -655,6 +799,25 @@ export function useOrdersLive(options = {}) {
     });
   });
 
+  const estadoPieSegmentsToday = computed(() => {
+    const circumference = 2 * Math.PI * 42;
+    const total = statsToday.value.totalOrdenes || 0;
+    if (!total) return [];
+
+    let offset = 0;
+    return estadoChartDataToday.value.map((item) => {
+      const fraction = item.cantidad / total;
+      const length = fraction * circumference;
+      const segment = {
+        ...item,
+        dashArray: `${length} ${circumference - length}`,
+        dashOffset: -offset,
+      };
+      offset += length;
+      return segment;
+    });
+  });
+
   function loadMoreRows() {
     const total = filasOrdenadas.value.length;
     if (visibleCount.value < total) {
@@ -710,5 +873,11 @@ export function useOrdersLive(options = {}) {
     closeEditor,
     submitForm,
     loadMoreRows,
+    resumenPagos,
+    fetchPaymentsSummary,
+    estadoChartDataToday,
+    pagoChartDataToday,
+    estadoPieSegmentsToday,
+    statsToday,
   };
 }

@@ -15,7 +15,7 @@
       <span class="glitch-text">SISTEMA EN LÍNEA</span>
     </section>
 
-    <section class="status-cards">
+  <section class="status-cards">
       <div class="card">
         <p class="card-label">Turno</p>
         <p class="card-value">Activo</p>
@@ -27,6 +27,10 @@
       <div class="card">
         <p class="card-label">Usuarios</p>
         <p class="card-value">18</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Cuenta</p>
+        <p class="card-value"><button class="login-btn" @click="onLoginClick">Iniciar sesión</button></p>
       </div>
     </section>
 
@@ -71,11 +75,13 @@
         </li>
       </ul>
     </nav>
+    <!-- Login modal is handled globally in the parent (OrdersLive) -->
   </aside>
 </template>
 
 <script setup>
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
+const emit = defineEmits(['open-login']);
 
 // Static navigation blueprint; allows the view to stay declarative and avoids hardcoding markup.
 const sections = [
@@ -177,6 +183,42 @@ const sections = [
 ];
 
 const openState = reactive({});
+// local state only for UI; modal is controlled by parent
+// const showLogin = ref(false);
+let logoutTimer = null;
+
+function onLoginClick() {
+  emit('open-login');
+}
+
+function onLoginSuccess(user) {
+  // El parent manejará el cierre; aquí solo logueamos
+  console.log('usuario logueado', user);
+}
+
+function onLoginClose() { /* noop; parent controla modal */ }
+
+function scheduleAutoLogout() {
+  // limpia timer previo
+  if (logoutTimer) {
+    clearTimeout(logoutTimer);
+    logoutTimer = null;
+  }
+  const remaining = getSessionRemainingMs();
+  if (remaining > 0) {
+    logoutTimer = setTimeout(() => {
+      // Al expirar la sesión, hacer logout y reabrir modal
+      logout();
+      showLogin.value = true;
+    }, remaining);
+  } else {
+    // si ya expiró, forzar logout y mostrar modal
+    logout();
+    showLogin.value = true;
+  }
+}
+
+// no session control here; moved to OrdersLive
 
 // Basic accordion state so each submenu can expand independently.
 function isOpen(id) {
@@ -216,6 +258,15 @@ function toggle(id) {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.login-btn {
+  background: linear-gradient(90deg, #06b6d4, #7c3aed);
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .logo-chip {

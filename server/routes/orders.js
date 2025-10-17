@@ -18,7 +18,7 @@ export function createOrdersRouter({ orderService, broadcast }) {
   });
 
   // Crea una nueva orden y notifica a los clientes SSE.
-  router.post("/create", async (req, res, next) => {
+  router.post("/", async (req, res, next) => {
     try {
       const created = await orderService.insertOrder(req.body || {});
       broadcast("insert", created);
@@ -28,10 +28,31 @@ export function createOrdersRouter({ orderService, broadcast }) {
     }
   });
 
-  // Actualiza una orden existente y sincroniza via SSE.
-  router.put("/update", async (req, res, next) => {
+  // Obtiene una orden especifica.
+  router.get("/:id", async (req, res, next) => {
     try {
-      const id = Number(req.body?.id);
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ result: false, message: "ID invalido" });
+      }
+
+      const order = await orderService.fetchOrderById(id);
+      if (!order) {
+        return res
+          .status(404)
+          .json({ result: false, message: "Orden no encontrada" });
+      }
+
+      res.json({ result: true, order });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Actualiza una orden existente y sincroniza via SSE.
+  router.put("/:id", async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
       if (!Number.isFinite(id)) {
         return res.status(400).json({ result: false, message: "ID invalido" });
       }
@@ -52,4 +73,3 @@ export function createOrdersRouter({ orderService, broadcast }) {
 
   return router;
 }
-

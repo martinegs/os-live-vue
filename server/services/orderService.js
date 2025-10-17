@@ -46,6 +46,12 @@ function toBooleanFlag(value) {
   return value ? 1 : 0;
 }
 
+function formatLocalDate(date = new Date()) {
+  const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localMidnight = new Date(date.getTime() - tzOffsetMs);
+  return localMidnight.toISOString().slice(0, 10);
+}
+
 function mapDbRow(row, activityTsColumn) {
   return {
     id: Number(row.id ?? row.idOs) || 0,
@@ -72,6 +78,7 @@ function mapDbRow(row, activityTsColumn) {
     descripcionProducto: row.descripcionProducto ?? null,
     clase: row.clase ?? null,
     informacionGeneral: row.informacionGeneral ?? null,
+    fechaPago: row.fechaPago ?? null,
     esAreaClientes: Boolean(
       Number(row.pagadoAreaClientes ?? row.esAreaClientes ?? 0)
     ),
@@ -117,7 +124,16 @@ function normalizeOrderInput(input, prev, activityTsColumn) {
   return result;
 }
 
-function selectFields() {
+function selectFields({ paymentsTable, orderPaymentsTable } = {}) {
+  // Subconsulta para obtener la última fecha de pago asociada a la OS sin requerir columna en la tabla de órdenes.
+  const fechaPagoExpr = paymentsTable && orderPaymentsTable
+    ? `(
+      SELECT MAX(pagos.fecha)
+      FROM \`${orderPaymentsTable}\` rel
+      INNER JOIN \`${paymentsTable}\` pagos ON pagos.idPago = rel.pagos_id
+      WHERE rel.os_id = os.idOs
+    )`
+    : `NULL`;
   return `
     os.idOs AS id,
     os.status AS status,
@@ -145,16 +161,23 @@ function selectFields() {
     clientes.nomeCliente AS cliente_nombre,
     usuarios.idUsuarios AS usuario_id,
     usuarios.nome AS usuario_nombre,
-    COALESCE(lugares_entrega.lugar, '') AS lugarEntrega
+    COALESCE(lugares_entrega.lugar, '') AS lugarEntrega,
+    ${fechaPagoExpr} AS fechaPago
   `;
 }
 
-export function createOrderService({ pool, ordersTable, activityTsColumn }) {
+export function createOrderService({
+  pool,
+  ordersTable,
+  paymentsTable,
+  orderPaymentsTable,
+  activityTsColumn,
+}) {
   async function fetchOrders(limit = null) {
     const limitClause = limit ? "LIMIT ?" : "";
     const sql = `
       SELECT
-        ${selectFields()}
+        ${selectFields({ paymentsTable, orderPaymentsTable })}
       FROM \`${ordersTable}\` os
       LEFT JOIN clientes ON clientes.idClientes = os.clientes_id
       LEFT JOIN usuarios ON usuarios.idUsuarios = os.usuarios_id
@@ -170,7 +193,7 @@ export function createOrderService({ pool, ordersTable, activityTsColumn }) {
   async function fetchOrderById(id) {
     const sql = `
       SELECT
-        ${selectFields()}
+        ${selectFields({ paymentsTable, orderPaymentsTable })}
       FROM \`${ordersTable}\` os
       LEFT JOIN clientes ON clientes.idClientes = os.clientes_id
       LEFT JOIN usuarios ON usuarios.idUsuarios = os.usuarios_id
@@ -228,10 +251,53 @@ export function createOrderService({ pool, ordersTable, activityTsColumn }) {
     return fetchOrderById(id);
   }
 
+  async function pagadoConMp(targetDate = formatLocalDate()) {
+    if (!paymentsTable) {
+      throw new Error("paymentsTable no configurada para pagadoConMp");
+    }
+    if (!orderPaymentsTable) {
+      throw new Error("orderPaymentsTable no configurada para pagadoConMp");
+    }
+
+    const sql = `
+      SELECT
+        pagos.idPago AS idPago,
+        pagos.fecha AS fecha,
+        rel.os_id AS osId,
+        os.valorPagado AS valorPagado
+      FROM \`${paymentsTable}\` pagos
+      INNER JOIN \`${orderPaymentsTable}\` rel ON rel.pagos_id = pagos.idPago
+      INNER JOIN \`${ordersTable}\` os ON os.idOs = rel.os_id
+      WHERE pagos.cargadoDesde = 'MP'
+        AND pagos.fecha = ?
+    `;
+    const [rows] = await pool.query(sql, [targetDate]);
+
+    const detalles = rows.map((row) => ({
+      idPago: Number(row.idPago) || 0,
+      fecha: row.fecha,
+      osId: Number(row.osId) || 0,
+      valorPagado: sanitizeNumber(row.valorPagado, 0) ?? 0,
+    }));
+
+    const totalValorPagado = detalles.reduce(
+      (acc, item) => acc + item.valorPagado,
+      0
+    );
+
+    return {
+      date: targetDate,
+      totalValorPagado,
+      operaciones: detalles.length,
+      detalles,
+    };
+  }
+
   return {
     fetchOrders,
     fetchOrderById,
     insertOrder,
     updateOrder,
+    pagadoConMp,
   };
 }

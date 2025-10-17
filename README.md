@@ -39,8 +39,9 @@ El frontend detecta si corre en localhost y, salvo que definas `VITE_API_ORIGIN`
 ## Backend Express
 - `server/index.js`: API REST + SSE montada sobre MySQL (`mysql2/promise`).
   - `GET /api/os` -> listado completo de ordenes.
-  - `POST /api/os/create` -> crea una orden y emite evento `insert`.
-  - `PUT /api/os/update` -> actualiza una orden y emite evento `update`.
+  - `POST /api/os` -> crea una orden y emite evento `insert`.
+  - `GET /api/os/:id` -> obtiene una orden especifica.
+  - `PUT /api/os/:id` -> actualiza una orden y emite evento `update`.
   - `GET /realtime/stream?channel=os` -> stream SSE consumido por el panel.
   - `GET /health` -> verificacion rapida de la conexion y metadatos.
 - La conexion usa pool y parametros configurables por entorno.

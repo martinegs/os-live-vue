@@ -10,30 +10,34 @@
 
     <div class="insights-grid">
       <div class="insight-card">
-        <span class="insight-label">Pagado</span>
-        <strong class="insight-value">{{ currency(stats.totalPagado) }}</strong>
-        <span class="insight-sub">Saldo pendiente: {{ currency(stats.totalPendiente) }}</span>
+        <span class="insight-label">Pagado (hoy)</span>
+        <strong class="insight-value">{{ currency(paymentsSummary?.aggregate?.totalNeto ?? 0) }}</strong>
+        <span class="insight-sub">Recaudado hoy (tabla pagos)</span>
       </div>
       <div class="insight-card">
-        <span class="insight-label">Ticket promedio</span>
-        <strong class="insight-value">{{ currency(stats.ticketPromedio) }}</strong>
-        <span class="insight-sub">{{ currency(stats.promedioPagado) }} abonado promedio</span>
+        <span class="insight-label">Ticket promedio (hoy)</span>
+        <strong class="insight-value">{{ todaysTicket }}</strong>
+        <span class="insight-sub">Promedio por orden hoy</span>
       </div>
       <div class="insight-card">
-        <span class="insight-label">Metros en proceso</span>
-        <strong class="insight-value">{{ stats.totalMetros ?? 0 }}</strong>
-        <span class="insight-sub">{{ stats.ordenesConMetros ?? 0 }} órdenes con metros</span>
+        <span class="insight-label">Metros (hoy)</span>
+        <strong class="insight-value">{{ props.resumenHoy?.metros ?? 0 }}</strong>
+        <span class="insight-sub">{{ todaysOrdersWithMeters }} órdenes con metros</span>
       </div>
     </div>
+
+
+
+
 
     <div class="charts-wrapper">
       <div class="insight-chart">
         <header class="insight-chart__header">
-          <h5>Distribución por estado</h5>
-          <span>{{ stats.estadoTotal ?? 0 }} estados activos</span>
+          <h5>Distribución por estado (HOY)</h5>
+          <span>{{ (statsToday?.estadoTotal ?? stats.estadoTotal ?? 0) }} estados activos</span>
         </header>
         <div class="chart-layout">
-          <div class="bars">
+      <div class="bars">
             <div
               v-for="item in estadoChartData"
               :key="item.label"
@@ -44,9 +48,6 @@
               <span class="bar-value">{{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)</span>
               <span class="bar-fill"></span>
             </div>
-          </div>
-
-          <div class="pie">
             <svg viewBox="0 0 120 120" class="pie-chart">
               <circle class="pie-bg" cx="60" cy="60" r="42" />
               <circle
@@ -68,14 +69,15 @@
                 <span class="legend-value">{{ segment.cantidad }}</span>
               </li>
             </ul>
+
           </div>
         </div>
       </div>
 
       <div v-if="pagoChartData.length" class="insight-chart insight-chart--secondary">
         <header class="insight-chart__header">
-          <h5>Pagos registrados</h5>
-          <span>{{ stats.totalOrdenes ?? 0 }} órdenes consideradas</span>
+          <h5>Pagos registrados (HOY)</h5>
+          <span>{{ (statsToday?.totalOrdenes ?? stats.totalOrdenes ?? 0) }} órdenes consideradas</span>
         </header>
         <div class="payment-list">
           <div
@@ -97,15 +99,58 @@
         </div>
       </div>
     </div>
+      <div style="margin-top: 32px;">
+        <KpiLugares :rows="rows" class="kpi-lugares-full" />
+      </div>
+      <div style="margin-top: 18px;">
+        <div class="insight-chart">
+          <header class="insight-chart__header">
+            <h5>Recaudación (pagos) - totales diarios</h5>
+            <span>Hace 3 • Hace 2 • Ayer • Hoy • Proy. Mañana</span>
+            <div style="margin-left:12px;color:rgba(148,163,184,0.85);font-size:13px;">Proyección mañana: {{ currency(projectedTomorrow) }}</div>
+          </header>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Concepto</th>
+                  <th>Hace 3</th>
+                  <th>Hace 2</th>
+                  <th>Ayer</th>
+                  <th>Hoy</th>
+                  <th>Proy. Mañana</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-branch">Total neto recibido</td>
+                  <td>{{ currency(payTotals[0]) }}</td>
+                  <td>{{ currency(payTotals[1]) }}</td>
+                  <td>{{ currency(payTotals[2]) }}</td>
+                  <td>{{ currency(payTotals[3]) }}</td>
+                  <td>{{ currency(projectedTomorrow) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
   </section>
 </template>
 
 <script setup>
+import KpiLugares from '../KpiLugares.vue';
+import { computed, ref, onMounted } from 'vue';
 // Small formatting helper keeps the template tidy while relying on the formatter passed from the parent.
 const props = defineProps({
   stats: {
     type: Object,
     required: true,
+  },
+  statsToday: {
+    type: Object,
+    required: false,
+    default: () => ({ totalOrdenes: 0, estadoTotal: 0 }),
   },
   estadoChartData: {
     type: Array,
@@ -119,15 +164,135 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  paymentsSummary: {
+    type: Object,
+    required: false,
+    default: () => ({ aggregate: { totalNeto: 0 }, items: [] }),
+  },
   formatCurrency: {
     type: Function,
     default: (value) => value,
+  },
+  rows: {
+    type: Array,
+    required: true,
+  },
+  resumenHoy: {
+    type: Object,
+    required: false,
+    default: () => ({ total: 0, metros: 0 }),
   },
 });
 
 function currency(value) {
   return props.formatCurrency(value ?? 0);
 }
+
+// Computed helpers for today's metrics based on the provided rows
+const todaysRows = computed(() => {
+  const hoy = new Date().toISOString().slice(0, 10);
+  return (props.rows || []).filter((row) => {
+    const fecha = row.fechaIngreso ?? row.ts ?? null;
+    if (!fecha) return false;
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.toISOString().slice(0, 10) === hoy;
+  });
+});
+
+const todaysOrdersWithMeters = computed(() =>
+  todaysRows.value.filter((r) => {
+    const m = Number(r.metros ?? 0);
+    return Number.isFinite(m) && m > 0;
+  }).length
+);
+
+const todaysTicket = computed(() => {
+  const rows = todaysRows.value;
+  if (!rows.length) return currency(0);
+  const totalFacturado = rows.reduce((s, r) => s + (Number(r.valorTotal ?? 0) || 0), 0);
+  return currency(totalFacturado / rows.length);
+});
+
+// Fetch totals desde /api/pagos/today?date=YYYY-MM-DD para los 4 días y calcular proyección
+const payTotals = ref([0,0,0,0,0]);
+
+function formatLocalDate(d) {
+  const tzOffsetMs = d.getTimezoneOffset() * 60 * 1000;
+  const localMidnight = new Date(d.getTime() - tzOffsetMs);
+  return localMidnight.toISOString().slice(0, 10);
+}
+
+async function fetchPayTotalForDate(dateStr) {
+  try {
+    const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? (isDev ? 'http://localhost:4000' : '');
+    const baseApi = String(apiOrigin || '').replace(/\/$/, '');
+    const url = `${baseApi}/api/pagos/today?date=${encodeURIComponent(dateStr)}`;
+    console.info('[OrdersInsights] fetching pagos', { url, dateStr });
+    const res = await fetch(url, { credentials: 'omit' });
+    if (!res.ok) {
+      let txt = '';
+      try { txt = await res.text(); } catch (e) { txt = String(e); }
+      console.warn('[OrdersInsights] fallo fetch pagos', { dateStr, status: res.status, body: txt });
+      return 0;
+    }
+    const body = await res.json();
+    console.info('[OrdersInsights] pagos response', { dateStr, body });
+    // body.aggregate.totalNeto o body.mpOrders.totalValorPagado
+    if (body && body.aggregate && typeof body.aggregate.totalNeto === 'number') return body.aggregate.totalNeto;
+    if (body && body.mpOrders && typeof body.mpOrders.totalValorPagado === 'number') return body.mpOrders.totalValorPagado;
+    return 0;
+  } catch (err) {
+    console.warn('[OrdersInsights] error fetch pagos', err);
+    return 0;
+  }
+}
+
+onMounted(async () => {
+  const now = new Date();
+  const dates = [3,2,1,0].map((offset) => formatLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)));
+  const results = await Promise.all(dates.map(d => fetchPayTotalForDate(d)));
+  for (let i = 0; i < 4; i++) payTotals.value[i] = results[i] || 0;
+  const hoy = payTotals.value[3] || 0;
+  const ayer = payTotals.value[2] || 0;
+  const delta = hoy - ayer;
+  payTotals.value[4] = Math.max(0, Math.round(hoy + delta));
+});
+
+const projectedTomorrow = computed(() => {
+  const d3 = Number(payTotals.value[0] || 0);
+  const d2 = Number(payTotals.value[1] || 0);
+  const ayer = Number(payTotals.value[2] || 0);
+  const hoy = Number(payTotals.value[3] || 0);
+
+  // Caso ideal: hoy y ayer presentes
+  if (hoy > 0 && ayer >= 0) {
+    const delta = hoy - ayer;
+    const proj = hoy + delta;
+    return Math.max(0, Math.round(proj * 100) / 100);
+  }
+
+  // Si solo hoy tiene valor, usar hoy como base
+  if (hoy > 0 && ayer === 0) {
+    return Math.round(hoy * 100) / 100;
+  }
+
+  // Si solo ayer tiene valor, usar ayer como base
+  if (ayer > 0 && hoy === 0) {
+    return Math.round(ayer * 100) / 100;
+  }
+
+  // Usar promedio de últimos no-cero (d3, d2, ayer, hoy)
+  const vals = [d3, d2, ayer, hoy].filter(v => v > 0);
+  if (vals.length) {
+    const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+    return Math.round(avg * 100) / 100;
+  }
+
+  // Fallback final: 0
+  return 0;
+});
 </script>
 
 <style scoped>
@@ -148,6 +313,12 @@ function currency(value) {
   flex-direction: column;
   gap: 18px;
   box-sizing: border-box;
+}
+
+.kpi-lugares-full {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .insights-header {
@@ -369,6 +540,41 @@ function currency(value) {
 
 .insight-chart--secondary {
   min-height: 0;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.data-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.35);
+}
+
+.col-branch {
+  font-weight: 600;
 }
 
 .payment-list {

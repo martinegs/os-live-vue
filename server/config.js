@@ -48,6 +48,11 @@ export const config = Object.freeze({
   tables: {
     orders: sanitizeTableName(process.env.MYSQL_ORDERS_TABLE, "os"),
     payments: sanitizeTableName(process.env.MYSQL_PAYMENTS_TABLE, "pagos"),
+    orderPayments: sanitizeTableName(
+      process.env.MYSQL_ORDER_PAYMENTS_TABLE,
+      "os_pagos"
+    ),
+    users: sanitizeTableName(process.env.MYSQL_USERS_TABLE, "usuarios"),
   },
   sse: {
     pingInterval: toNumber(process.env.SSE_PING_INTERVAL_MS, 25000),
@@ -58,4 +63,7 @@ export const config = Object.freeze({
     batchLimit: toNumber(process.env.EVENT_BUS_BATCH_LIMIT, 200),
   },
   activityTsColumn: (process.env.MYSQL_ACTIVITY_TS_COLUMN || "").trim() || null,
+  auth: {
+    jwtSecret: process.env.JWT_SECRET || null,
+  },
 });

@@ -11,6 +11,7 @@ import { createPaymentService } from "./services/paymentService.js";
 import { createOrdersRouter } from "./routes/orders.js";
 import { createPaymentsRouter } from "./routes/payments.js";
 import { createHealthRouter } from "./routes/health.js";
+import { createAuthRouter } from "./routes/auth.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -43,11 +44,15 @@ app.use(
 const orderService = createOrderService({
   pool,
   ordersTable: config.tables.orders,
+  paymentsTable: config.tables.payments,
+  orderPaymentsTable: config.tables.orderPayments,
   activityTsColumn: config.activityTsColumn,
 });
 const paymentService = createPaymentService({
   pool,
   paymentsTable: config.tables.payments,
+  ordersTable: config.tables.orders,
+  orderPaymentsTable: config.tables.orderPayments,
 });
 
 app.use(httpLogger());
@@ -72,6 +77,10 @@ app.use(
 app.use(
   "/api/pagos",
   createPaymentsRouter({ paymentService })
+);
+app.use(
+  "/api/auth",
+  createAuthRouter({ pool })
 );
 app.use("/realtime", realtime.router);
 
