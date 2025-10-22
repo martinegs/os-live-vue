@@ -15,10 +15,6 @@ export function createAuthRouter({ pool }) {
   router.post("/login", async (req, res, next) => {
     try {
       const { email, senha } = req.body || {};
-      // Bypass temporal: usuario admin/admin
-      if (email === 'admin' && senha === 'admin') {
-        return res.json({ result: true, user: { email: 'admin', nome: 'Administrador', idUsuarios: 0, permisos_id: 99 }, token: 'admin-dev-token' });
-      }
       // Diagnostic: log attempt metadata (no passwords)
       try {
         const ip = req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || 'unknown';

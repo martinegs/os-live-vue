@@ -217,6 +217,18 @@ function fromEvent(msg, tipo) {
   return result;
 }
 
+function normalizeEndpoint(base) {
+  return String(base || "").replace(/\/+$/, "");
+}
+
+function resolveUpdateUrl(template, id) {
+  const strId = String(id);
+  if (!template) return strId;
+  if (template.includes("{id}")) return template.replace("{id}", strId);
+  if (template.includes(":id")) return template.replace(":id", strId);
+  return `${normalizeEndpoint(template)}/${strId}`;
+}
+
 function toEditable(row) {
   const form = createBaseForm();
   form.id = row.id ?? row.idOs ?? null;
@@ -255,11 +267,13 @@ export function useOrdersLive(options = {}) {
   const {
     apiUrl = "/api/os",
     sseUrl = "/realtime/stream?channel=os",
-    updateUrl = "/api/os/update",
-    createUrl = "/api/os/create",
+    updateUrl = null,
+    createUrl = null,
     chunkSize = DEFAULT_CHUNK_SIZE,
   } = options;
   const paymentsUrl = options.paymentsUrl || "/api/pagos/today";
+  const createEndpoint = (createUrl || apiUrl) || "/api/os";
+  const updateEndpoint = (updateUrl || apiUrl) || "/api/os";
 
   const estado = ref("cargando...");
   const apiStatus = ref("desconectado");
@@ -486,11 +500,14 @@ export function useOrdersLive(options = {}) {
       informacionGeneral: editing.form.informacionGeneral || null,
     };
 
-    const url = editing.mode === "create" ? createUrl : updateUrl;
     const method = editing.mode === "create" ? "POST" : "PUT";
+    const targetUrl =
+      editing.mode === "create"
+        ? createEndpoint
+        : resolveUpdateUrl(updateEndpoint, numericId);
 
     try {
-      const res = await fetch(url, {
+      const res = await fetch(targetUrl, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
