@@ -43,9 +43,9 @@ const query = computed({
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
   margin-bottom: 20px;
 }
 
@@ -75,6 +75,8 @@ const query = computed({
   border: none;
   border-radius: 999px;
   padding: 10px 16px;
+  margin-left: auto;
+  flex-shrink: 0;
   background: linear-gradient(135deg, rgba(236, 72, 153, 0.65), rgba(37, 99, 235, 0.65));
   color: #f8fafc;
   letter-spacing: 0.12em;
@@ -93,10 +95,12 @@ const query = computed({
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
     gap: 12px;
   }
 
   .toolbar-btn {
+    margin-left: 0;
     width: 100%;
   }
 }

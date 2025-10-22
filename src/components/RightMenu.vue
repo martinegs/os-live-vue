@@ -1,531 +1,353 @@
 <template>
-  <aside class="menu-shell">
-    <header class="menu-header">
-      <div class="logo-chip">
-        <span>DT</span>
+  <div class="right-menu">
+    <header class="right-menu__header">
+      <div class="right-menu__brand">
+        <span class="right-menu__mark">DT</span>
+        <div>
+          <p class="right-menu__title">DigitalTex Ops</p>
+          <p class="right-menu__subtitle">Panel de operaciones</p>
+        </div>
       </div>
-      <div class="brand-info">
-        <p class="brand">DigitalTex Ops</p>
-        <p class="tagline">Monitoreo en tiempo real</p>
-      </div>
+      <span class="dt-pill right-menu__status">Sistema en linea</span>
     </header>
 
-    <section class="glitch-bar">
-      <span class="pulse-dot" aria-hidden="true"></span>
-      <span class="glitch-text">SISTEMA EN LÍNEA</span>
+    <section class="right-menu__metrics">
+      <article class="right-menu__card">
+        <p class="right-menu__card-label">Turno</p>
+        <p class="right-menu__card-value">Activo</p>
+      </article>
+      <article class="right-menu__card">
+        <p class="right-menu__card-label">Alertas</p>
+        <p class="right-menu__card-value right-menu__card-value--warn">03</p>
+      </article>
+      <article class="right-menu__card">
+        <p class="right-menu__card-label">Usuarios</p>
+        <p class="right-menu__card-value">18</p>
+      </article>
+      <button class="right-menu__action" type="button" @click="emit('open-login')">
+        Iniciar sesion
+      </button>
     </section>
 
-  <section class="status-cards">
-      <div class="card">
-        <p class="card-label">Turno</p>
-        <p class="card-value">Activo</p>
-      </div>
-      <div class="card">
-        <p class="card-label">Alertas</p>
-        <p class="card-value warn">03</p>
-      </div>
-      <div class="card">
-        <p class="card-label">Usuarios</p>
-        <p class="card-value">18</p>
-      </div>
-      <div class="card">
-        <p class="card-label">Cuenta</p>
-        <p class="card-value"><button class="login-btn" @click="onLoginClick">Iniciar sesión</button></p>
-      </div>
-    </section>
-
-    <nav class="nav-block">
-      <ul class="nav-list">
-        <li
-          v-for="section in sections"
-          :key="section.id"
-          class="nav-item"
-        >
+    <nav class="right-menu__nav">
+      <p class="dt-kicker">Secciones</p>
+      <ul class="right-menu__list">
+        <li v-for="section in sections" :key="section.id" class="right-menu__item">
           <component
             :is="section.children ? 'button' : 'a'"
-            class="nav-link"
-            :class="{ open: isOpen(section.id), nested: !!section.children }"
-            :type="section.children ? 'button' : undefined"
-            :href="section.link || undefined"
+            class="right-menu__link"
+            :href="!section.children ? section.href : undefined"
+            type="button"
             @click="section.children ? toggle(section.id) : undefined"
           >
-            <span class="icon" aria-hidden="true">{{ section.icon }}</span>
-            <span class="text">{{ section.label }}</span>
-            <span v-if="section.children" class="caret" aria-hidden="true">
-              {{ isOpen(section.id) ? "▼" : "►" }}
+            <span class="right-menu__dot">{{ section.short }}</span>
+            <span class="right-menu__label">{{ section.label }}</span>
+            <span v-if="section.children" class="right-menu__caret">
+              {{ isOpen(section.id) ? 'v' : '>' }}
             </span>
           </component>
 
-          <transition name="submenu">
-            <ul
-              v-if="section.children && isOpen(section.id)"
-              class="submenu"
-            >
-              <li
-                v-for="item in section.children"
-                :key="item.id"
-                class="submenu-item"
-              >
-                <a class="submenu-link" :href="item.link || '#'">
-                  {{ item.label }}
-                </a>
+          <transition name="menu-fade">
+            <ul v-if="section.children && isOpen(section.id)" class="right-menu__sub">
+              <li v-for="item in section.children" :key="item.id">
+                <a class="right-menu__sublink" :href="item.href ?? '#'">{{ item.label }}</a>
               </li>
             </ul>
           </transition>
         </li>
       </ul>
     </nav>
-    <!-- Login modal is handled globally in the parent (OrdersLive) -->
-  </aside>
+  </div>
 </template>
 
 <script setup>
-import { reactive, ref } from "vue";
-const emit = defineEmits(['open-login']);
+import { ref } from "vue";
 
-// Static navigation blueprint; allows the view to stay declarative and avoids hardcoding markup.
+const emit = defineEmits(["open-login"]);
+
 const sections = [
-  { id: "panel", label: "Panel", icon: "⌂" },
+  { id: "overview", label: "Panel general", short: "PG", href: "#" },
   {
-    id: "clientes",
+    id: "clients",
     label: "Clientes",
-    icon: "👥",
+    short: "CL",
     children: [
-      { id: "clientes-lista", label: "Clientes" },
-      { id: "clientes-contactos", label: "Contactos" },
-      { id: "clientes-descuentos", label: "Descuentos" },
-      { id: "clientes-360", label: "360°" },
-      { id: "clientes-stock", label: "Stock" },
+      { id: "clients-list", label: "Listado", href: "#" },
+      { id: "clients-contacts", label: "Contactos", href: "#" },
+      { id: "clients-discounts", label: "Descuentos", href: "#" },
     ],
   },
-  { id: "proveedores", label: "Proveedores", icon: "🏢" },
-  { id: "productos", label: "Productos", icon: "🧵" },
-  { id: "servicios", label: "Servicios", icon: "🛠️" },
+  { id: "providers", label: "Proveedores", short: "PR", href: "#" },
+  { id: "products", label: "Productos", short: "PD", href: "#" },
   {
-    id: "actividades",
-    label: "Actividades",
-    icon: "📈",
+    id: "orders",
+    label: "Ordenes de trabajo",
+    short: "OT",
     children: [
-      { id: "actividades-logs", label: "Logs Clientes" },
-      { id: "actividades-movimientos", label: "$ Movimientos" },
-    ],
-  },
-  {
-    id: "ordenes",
-    label: "Órdenes de Trabajo",
-    icon: "🧾",
-    children: [
-      { id: "ordenes-gerenciar", label: "Gerenciar" },
-      { id: "ordenes-temporales", label: "Órdenes temporales" },
-      { id: "ordenes-errores", label: "Órdenes con errores" },
-      { id: "ordenes-jornadas", label: "Reporte Jornadas" },
-      { id: "ordenes-rollos", label: "Rollos / Hot metros" },
+      { id: "orders-manage", label: "Gestion en vivo", href: "#" },
+      { id: "orders-pending", label: "Pendientes", href: "#" },
+      { id: "orders-errors", label: "Con incidencias", href: "#" },
     ],
   },
   {
-    id: "financiero",
-    label: "Financiero",
-    icon: "💰",
+    id: "payments",
+    label: "Pagos",
+    short: "PG",
     children: [
-      { id: "financiero-comunicados", label: "Comunicados" },
-      { id: "financiero-ganancias", label: "Ganancias" },
-      { id: "financiero-adeuda", label: "Adeuda" },
-      { id: "financiero-mp", label: "Mercado Pago" },
-      { id: "financiero-pagos", label: "Pagos procesados" },
-    ],
-  },
-  {
-    id: "informes",
-    label: "Informes",
-    icon: "📋",
-    children: [
-      { id: "informes-financiero", label: "Financiero" },
-      { id: "informes-360", label: "360°" },
-    ],
-  },
-  { id: "porcentajes", label: "Informe Porcentajes", icon: "⚖️" },
-  { id: "productos-clientes", label: "Productos Clientes", icon: "📦" },
-  { id: "categorias-estampados", label: "Categorías Estampados", icon: "🎨" },
-  { id: "estampados", label: "Estampados", icon: "🖼️" },
-  {
-    id: "auditorias",
-    label: "Auditorías",
-    icon: "🔍",
-    children: [
-      { id: "auditorias-productos", label: "Productos eliminados" },
-      { id: "auditorias-adelantos", label: "Adelantos clientes" },
-    ],
-  },
-  {
-    id: "configuraciones",
-    label: "Configuraciones",
-    icon: "⚙️",
-    children: [
-      { id: "configuraciones-usuarios", label: "Usuarios" },
-      { id: "configuraciones-empresa", label: "Empresa" },
-      { id: "configuraciones-ofertas", label: "Ofertas" },
-      { id: "configuraciones-comisiones", label: "Comisiones" },
-      { id: "configuraciones-permisos", label: "Permisos" },
-      { id: "configuraciones-horarios", label: "Horarios / Tardanzas" },
-      { id: "configuraciones-qr", label: "QR / Adelantos" },
-      { id: "configuraciones-backup", label: "Backup" },
-    ],
-  },
-  {
-    id: "accesos-directos",
-    label: "Accesos directos",
-    icon: "⚡",
-    children: [
-      { id: "accesos-asistencias", label: "Asistencias" },
-      { id: "accesos-gastos", label: "Gastos" },
+      { id: "payments-today", label: "Pagos del dia", href: "#" },
+      { id: "payments-history", label: "Historico", href: "#" },
     ],
   },
 ];
 
-const openState = reactive({});
-// local state only for UI; modal is controlled by parent
-// const showLogin = ref(false);
-let logoutTimer = null;
-
-function onLoginClick() {
-  emit('open-login');
-}
-
-function onLoginSuccess(user) {
-  // El parent manejará el cierre; aquí solo logueamos
-  console.log('usuario logueado', user);
-}
-
-function onLoginClose() { /* noop; parent controla modal */ }
-
-function scheduleAutoLogout() {
-  // limpia timer previo
-  if (logoutTimer) {
-    clearTimeout(logoutTimer);
-    logoutTimer = null;
-  }
-  const remaining = getSessionRemainingMs();
-  if (remaining > 0) {
-    logoutTimer = setTimeout(() => {
-      // Al expirar la sesión, hacer logout y reabrir modal
-      logout();
-      showLogin.value = true;
-    }, remaining);
-  } else {
-    // si ya expiró, forzar logout y mostrar modal
-    logout();
-    showLogin.value = true;
-  }
-}
-
-// no session control here; moved to OrdersLive
-
-// Basic accordion state so each submenu can expand independently.
-function isOpen(id) {
-  if (openState[id] === undefined) {
-    openState[id] = false;
-  }
-  return openState[id];
-}
+const openSections = ref(new Set());
 
 function toggle(id) {
-  openState[id] = !isOpen(id);
+  const next = new Set(openSections.value);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  openSections.value = next;
+}
+
+function isOpen(id) {
+  return openSections.value.has(id);
 }
 </script>
 
 <style scoped>
-.menu-shell {
-  width: 360px;
-  padding: 28px 24px;
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(94, 234, 212, 0.08), rgba(56, 189, 248, 0.05)),
-    rgba(10, 16, 40, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow:
-    0 20px 45px rgba(14, 165, 233, 0.18),
-    0 0 0 1px rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(12px);
+.right-menu {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  color: #e2e8f0;
-  position: sticky;
-  top: 40px;
+  gap: var(--dt-gap-lg);
+  color: var(--dt-color-text-secondary);
 }
 
-.menu-header {
+.right-menu__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dt-gap-md);
+}
+
+.right-menu__brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--dt-gap-md);
 }
 
-.login-btn {
-  background: linear-gradient(90deg, #06b6d4, #7c3aed);
-  color: #fff;
-  border: 0;
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.logo-chip {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #7c3aed, #0ea5e9);
-  display: flex;
+.right-menu__mark {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #fff;
-  text-transform: uppercase;
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.6);
-}
-
-.brand-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.brand {
-  margin: 0;
-  font-size: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--dt-color-text-primary);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #f8fafc;
+  letter-spacing: 0.08em;
 }
 
-.tagline {
+.right-menu__title {
   margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.8);
+  font-size: var(--dt-font-size-lg);
+  color: var(--dt-color-text-primary);
+  font-weight: 600;
 }
 
-.glitch-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, rgba(168, 85, 247, 0.25), rgba(14, 165, 233, 0.08));
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  overflow: hidden;
-  text-transform: uppercase;
-  letter-spacing: 0.3em;
-  font-size: 11px;
+.right-menu__subtitle {
+  margin: 2px 0 0;
+  font-size: var(--dt-font-size-sm);
+  color: var(--dt-color-text-muted);
 }
 
-.glitch-bar::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -120%;
-  width: 80%;
-  height: 100%;
-  background: linear-gradient(120deg, rgba(56, 189, 248, 0.0) 0%, rgba(56, 189, 248, 0.35) 50%, rgba(56, 189, 248, 0.0) 100%);
-  animation: scanline 3.8s linear infinite;
+.right-menu__status {
+  align-self: flex-start;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
 }
 
-.pulse-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.9);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.glitch-text {
-  flex: 1;
-}
-
-.status-cards {
+.right-menu__metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dt-gap-md);
 }
 
-.card {
-  padding: 12px 12px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(94, 234, 212, 0.15);
-  text-align: center;
-  box-shadow: inset 0 0 10px rgba(12, 74, 110, 0.35);
+.right-menu__card {
+  padding: var(--dt-gap-sm) var(--dt-gap-md);
+  border-radius: var(--dt-radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.6);
 }
 
-.card-label {
+.right-menu__card-label {
   margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  color: rgba(148, 163, 184, 0.75);
+  font-size: var(--dt-font-size-xs);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--dt-color-text-muted);
 }
 
-.card-value {
-  margin: 4px 0 0;
-  font-size: 16px;
+.right-menu__card-value {
+  margin: 6px 0 0;
+  font-size: var(--dt-font-size-lg);
   font-weight: 600;
+  color: var(--dt-color-text-primary);
 }
 
-.card-value.warn {
-  color: #f59e0b;
+.right-menu__card-value--warn {
+  color: var(--dt-color-warning);
 }
 
-.nav-block {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  padding-right: 6px;
+.right-menu__action {
+  grid-column: span 2;
+  border: 1px solid var(--dt-color-accent);
+  border-radius: var(--dt-radius-md);
+  background: var(--dt-color-accent-soft);
+  color: var(--dt-color-text-primary);
+  font-weight: 500;
+  padding: var(--dt-gap-sm) var(--dt-gap-md);
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.nav-block::-webkit-scrollbar {
-  width: 6px;
+.right-menu__action:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  transform: translateY(-2px);
 }
 
-.nav-block::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 3px;
+.right-menu__action:focus-visible {
+  outline: 2px solid var(--dt-color-accent);
+  outline-offset: 2px;
 }
 
-.nav-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.right-menu__nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dt-gap-sm);
 }
 
-.nav-item {
-  display: block;
+.right-menu__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dt-gap-sm);
 }
 
-.nav-link {
-  width: 100%;
+.right-menu__item {
+  display: flex;
+  flex-direction: column;
+}
+
+.right-menu__link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 11px 14px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  color: inherit;
-  text-decoration: none;
-  font-size: 14px;
-  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease;
-}
-
-.nav-link:hover {
-  transform: translateX(4px);
-  border-color: rgba(129, 140, 248, 0.55);
-  background: rgba(37, 99, 235, 0.25);
-}
-
-.nav-link.nested {
+  gap: var(--dt-gap-md);
+  padding: var(--dt-gap-sm) var(--dt-gap-md);
+  border-radius: var(--dt-radius-md);
+  border: 1px solid transparent;
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--dt-color-text-primary);
   cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.nav-link.open {
-  border-color: rgba(236, 72, 153, 0.6);
-  background: linear-gradient(90deg, rgba(236, 72, 153, 0.3), rgba(79, 70, 229, 0.25));
-  box-shadow: 0 0 12px rgba(236, 72, 153, 0.2);
+.right-menu__link:hover {
+  border-color: var(--dt-color-border);
+  background: rgba(15, 23, 42, 0.68);
 }
 
-.icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: flex;
+.right-menu__dot {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  background: rgba(79, 70, 229, 0.28);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  font-size: var(--dt-font-size-xs);
+  letter-spacing: 0.12em;
 }
 
-.text {
-  flex: 1 1 auto;
-  text-align: left;
+.right-menu__label {
+  flex: 1;
+  font-size: var(--dt-font-size-sm);
+  font-weight: 500;
 }
 
-.caret {
-  font-size: 12px;
+.right-menu__caret {
+  font-size: var(--dt-font-size-sm);
+  color: var(--dt-color-text-muted);
 }
 
-.submenu {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 8px 0 0 18px;
-  border-left: 1px solid rgba(148, 163, 184, 0.25);
+.right-menu__sub {
+  margin: var(--dt-gap-xs) 0 0;
+  padding-left: 52px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dt-gap-xs);
 }
 
-.submenu-item {
-  display: block;
-}
-
-.submenu-link {
-  display: block;
-  padding: 6px 10px;
-  border-radius: 10px;
+.right-menu__sublink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--dt-font-size-xs);
   text-decoration: none;
-  color: rgba(226, 232, 240, 0.85);
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid transparent;
-  transition: border 0.15s ease, transform 0.15s ease;
-  font-size: 13px;
+  color: var(--dt-color-text-secondary);
+  border-radius: 999px;
+  padding: 6px 10px;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
-.submenu-link:hover {
-  border-color: rgba(56, 189, 248, 0.4);
-  transform: translateX(4px);
+.right-menu__sublink::before {
+  content: '-';
+  color: var(--dt-color-text-muted);
 }
 
-.submenu-enter-active,
-.submenu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.right-menu__sublink:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--dt-color-text-primary);
 }
 
-.submenu-enter-from,
-.submenu-leave-to {
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform-origin: top;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-6px);
 }
 
-@media (max-width: 1100px) {
-  .menu-shell {
-    position: static;
-    width: 100%;
-    max-width: 680px;
+@media (max-width: 920px) {
+  .right-menu__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .right-menu__action {
+    grid-column: span 3;
   }
 }
 
-@media (max-width: 768px) {
-  .menu-shell {
-    padding: 22px 18px;
-    gap: 20px;
+@media (max-width: 520px) {
+  .right-menu__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .status-cards {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  .right-menu__action {
+    grid-column: span 2;
   }
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.85; }
-  50% { transform: scale(1.3); opacity: 1; }
-}
-
-@keyframes scanline {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(220%); }
 }
 </style>

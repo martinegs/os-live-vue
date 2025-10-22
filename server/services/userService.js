@@ -1,17 +1,150 @@
-import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
+const HMAC_DIGEST = "sha512";
+const HMAC_HEX_LENGTH = 128; // sha512 expressed in hex
+const AES_BLOCK_SIZE = 16;
+const HKDF_DIGEST_SIZE = 64; // digest size in bytes for sha512
+const INFO_ENCRYPTION = Buffer.from("encryption", "utf8");
+const INFO_AUTHENTICATION = Buffer.from("authentication", "utf8");
+
+function hkdfSha512(sourceKey, length, info = Buffer.alloc(0), salt = null) {
+  const ikm = Buffer.isBuffer(sourceKey) ? sourceKey : Buffer.from(sourceKey || "", "utf8");
+  if (!ikm.length) {
+    return Buffer.alloc(0);
+  }
+
+  const infoBuf = Buffer.isBuffer(info) ? info : Buffer.from(info || "", "utf8");
+  const saltBuf =
+    salt && salt.length
+      ? Buffer.isBuffer(salt)
+        ? salt
+        : Buffer.from(salt)
+      : Buffer.alloc(HKDF_DIGEST_SIZE, 0);
+
+  const prk = crypto.createHmac(HMAC_DIGEST, saltBuf).update(ikm).digest();
+
+  let previous = Buffer.alloc(0);
+  const buffers = [];
+  let blockIndex = 1;
+
+  while (Buffer.concat(buffers).length < length && blockIndex <= 255) {
+    const hmac = crypto.createHmac(HMAC_DIGEST, prk);
+    hmac.update(previous);
+    hmac.update(infoBuf);
+    hmac.update(Buffer.from([blockIndex]));
+    previous = hmac.digest();
+    buffers.push(previous);
+    blockIndex += 1;
+  }
+
+  return Buffer.concat(buffers).subarray(0, length);
+}
+
+function timingSafeHexEquals(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length || a.length % 2 !== 0) {
+    return false;
+  }
+
+  try {
+    const aBuf = Buffer.from(a, "hex");
+    const bBuf = Buffer.from(b, "hex");
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
+
+function resolveCipherKey(derivedKey) {
+  const length = derivedKey.length;
+
+  if (length >= 32) {
+    return { algorithm: "aes-256-cbc", key: derivedKey.subarray(0, 32) };
+  }
+
+  if (length >= 24) {
+    return { algorithm: "aes-192-cbc", key: derivedKey.subarray(0, 24) };
+  }
+
+  if (length >= 16) {
+    return { algorithm: "aes-128-cbc", key: derivedKey.subarray(0, 16) };
+  }
+
+  return { algorithm: null, key: null };
+}
+
+export function decryptWithCodeIgniterMcrypt(encrypted, masterKey) {
+  if (typeof encrypted !== "string" || !encrypted.trim()) {
+    return null;
+  }
+
+  const trimmed = encrypted.trim();
+  if (trimmed.length <= HMAC_HEX_LENGTH) {
+    return null;
+  }
+
+  const keyBuf = Buffer.from(masterKey || "", "utf8");
+  if (!keyBuf.length) {
+    return null;
+  }
+
+  const digestHex = trimmed.slice(0, HMAC_HEX_LENGTH);
+  const payload = trimmed.slice(HMAC_HEX_LENGTH);
+
+  const hmacKey = hkdfSha512(keyBuf, HKDF_DIGEST_SIZE, INFO_AUTHENTICATION);
+  if (!hmacKey.length) {
+    return null;
+  }
+
+  const expectedDigest = crypto.createHmac(HMAC_DIGEST, hmacKey).update(payload, "utf8").digest("hex");
+  if (!timingSafeHexEquals(digestHex, expectedDigest)) {
+    return null;
+  }
+
+  let payloadBuffer;
+  try {
+    payloadBuffer = Buffer.from(payload, "base64");
+  } catch {
+    return null;
+  }
+
+  if (payloadBuffer.length <= AES_BLOCK_SIZE) {
+    return null;
+  }
+
+  const iv = payloadBuffer.subarray(0, AES_BLOCK_SIZE);
+  const ciphertext = payloadBuffer.subarray(AES_BLOCK_SIZE);
+
+  const derivedKey = hkdfSha512(keyBuf, keyBuf.length, INFO_ENCRYPTION);
+  const { algorithm, key } = resolveCipherKey(derivedKey);
+  if (!algorithm || !key) {
+    return null;
+  }
+
+  try {
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    decipher.setAutoPadding(true);
+    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return decrypted.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Servicio simple para usuarios. Soporta detección de algoritmo de hash
- * (bcrypt, md5, sha1) y migración a bcrypt en el primer login exitoso.
+ * Servicio de usuarios compatible con el login historico (CodeIgniter + mcrypt).
  */
-export function createUserService({ pool, usersTable = "usuarios" }) {
+export function createUserService({ pool, usersTable = "usuarios", ciEncryptionKey = null }) {
+  const resolvedKey =
+    typeof ciEncryptionKey === "string" && ciEncryptionKey.length
+      ? ciEncryptionKey
+      : "";
+
   return {
     async findByEmail(email) {
       const conn = await pool.getConnection();
       try {
         const [rows] = await conn.query(
-          `SELECT * FROM \`${usersTable}\` WHERE email = ? LIMIT 1`,
+          `SELECT * FROM \`${usersTable}\` WHERE email = ? AND situacao = 1 LIMIT 1`,
           [email]
         );
         return rows[0] || null;
@@ -20,133 +153,23 @@ export function createUserService({ pool, usersTable = "usuarios" }) {
       }
     },
 
-    async _updatePasswordToBcrypt(userId, plainPassword) {
-      // Re-hash the password with bcrypt and update the DB (transparent migration)
-      try {
-        const hash = await bcrypt.hash(plainPassword, 10);
-        const conn = await pool.getConnection();
-        try {
-          await conn.query(`UPDATE \`${usersTable}\` SET senha = ? WHERE idUsuarios = ?`, [hash, userId]);
-          try {
-            console.log(`[userService] migrated password to bcrypt for user id=${userId}`);
-          } catch (e) {}
-        } finally {
-          conn.release();
-        }
-      } catch (err) {
-        console.error('[userService] failed to migrate password to bcrypt', err);
-      }
-    },
-
     async verifyPassword(user, plainPassword) {
-      if (!user || !user.senha) return false;
-      const stored = String(user.senha).trim();
-      // Diagnostic logging: don't log passwords, only metadata
-      try {
-        const uid = user.idUsuarios || user.id || user.id_users || 'unknown';
-        console.log(`[userService] verifyPassword for user id=${uid}, storedLen=${stored.length}`);
-        if (user.email) console.log(`[userService] email=${user.email}`);
-        console.log(`[userService] stored senha (first 80):`, stored.slice(0,80));
-      } catch (e) {
-        // ignore logging errors
+      if (!user || !user.senha || typeof plainPassword !== "string") {
+        return false;
       }
 
-      // bcrypt style (starts with $2a$ / $2b$ / $2y$)
-      if (/^\$2[aby]\$/.test(stored)) {
-        try {
-          const ok = await bcrypt.compare(plainPassword, stored);
-          console.log(`[userService] detected bcrypt for user, result=${ok}`);
-          return ok;
-        } catch (err) {
-          return false;
-        }
+      if (!resolvedKey) {
+        console.warn("[userService] CI encryption key is missing; cannot validate password.");
+        return false;
       }
 
-      // Try pattern: leading hex (likely sha512) + trailing base64 (likely salt)
-      // Example provided by user: <hex128><base64...>
-      const hexBase64Match = stored.match(/^([a-f0-9]{64,128})([A-Za-z0-9+/=]+)$/i);
-      if (hexBase64Match) {
-        const hexPart = hexBase64Match[1];
-        const saltB64 = hexBase64Match[2];
-        console.log('[userService] detected hex+base64 pattern for senha; trying sha512/pbkdf2 variants');
-        console.log('[userService] hexPart:', hexPart);
-        console.log('[userService] saltB64:', saltB64);
-        try {
-          const salt = Buffer.from(saltB64, 'base64');
-
-          // Try sha512(password + salt)
-          const sha512a = crypto.createHash('sha512').update(plainPassword, 'utf8').update(salt).digest('hex');
-          console.log('[userService] sha512(password+salt):', sha512a);
-          if (sha512a === hexPart) {
-            console.log('[userService] matched sha512(password+salt)');
-            this._updatePasswordToBcrypt(user.idUsuarios || user.id || user.id_users || user.idUsuarios, plainPassword);
-            return true;
-          }
-
-          // Try sha512(salt + password)
-          const sha512b = crypto.createHash('sha512').update(salt).update(plainPassword, 'utf8').digest('hex');
-          console.log('[userService] sha512(salt+password):', sha512b);
-          if (sha512b === hexPart) {
-            console.log('[userService] matched sha512(salt+password)');
-            this._updatePasswordToBcrypt(user.idUsuarios || user.id || user.id_users || user.idUsuarios, plainPassword);
-            return true;
-          }
-
-          // Try pbkdf2 with common iteration/keylen choices
-          const iterationsList = [1000, 10000, 50000];
-          const keyLenList = [32, 64];
-          for (const iter of iterationsList) {
-            for (const klen of keyLenList) {
-              const derived = crypto.pbkdf2Sync(plainPassword, salt, iter, klen, 'sha512').toString('hex');
-              console.log(`[userService] pbkdf2 iter=${iter} keylen=${klen}:`, derived);
-              if (derived === hexPart) {
-                console.log(`[userService] matched pbkdf2 iter=${iter} keylen=${klen}`);
-                this._updatePasswordToBcrypt(user.idUsuarios || user.id || user.id_users || user.idUsuarios, plainPassword);
-                return true;
-              }
-            }
-          }
-        } catch (err) {
-          console.log('[userService] error en pruebas de hash:', err);
-        }
+      const decrypted = decryptWithCodeIgniterMcrypt(String(user.senha), resolvedKey);
+      if (decrypted === null) {
+        console.warn("[userService] Failed to decrypt senha using CodeIgniter-compatible routine.");
+        return false;
       }
 
-      // md5 hash (32 hex chars)
-      if (/^[a-f0-9]{32}$/i.test(stored)) {
-        const md5 = crypto.createHash('md5').update(plainPassword, 'utf8').digest('hex');
-        const ok = md5 === stored;
-        if (ok) {
-          console.log('[userService] matched md5');
-          // migrate to bcrypt asynchronously
-          this._updatePasswordToBcrypt(user.idUsuarios || user.id || user.id_users || user.idUsuarios, plainPassword);
-        }
-        return ok;
-      }
-
-      // sha1 hash (40 hex chars)
-      if (/^[a-f0-9]{40}$/i.test(stored)) {
-        const sha1 = crypto.createHash('sha1').update(plainPassword, 'utf8').digest('hex');
-        const ok = sha1 === stored;
-        if (ok) {
-          console.log('[userService] matched sha1');
-          this._updatePasswordToBcrypt(user.idUsuarios || user.id || user.id_users || user.idUsuarios, plainPassword);
-        }
-        return ok;
-      }
-
-      // Fallbacks: try bcrypt compare (in case of other bcrypt prefixes) then plain equality
-      try {
-        const bcryptOk = await bcrypt.compare(plainPassword, stored);
-        if (bcryptOk) {
-          console.log('[userService] bcrypt compare fallback succeeded');
-          return true;
-        }
-      } catch (err) {
-        // ignore
-      }
-
-      // Direct text comparison (if stored as plain text)
-      return stored === plainPassword;
+      return decrypted === plainPassword;
     },
   };
 }

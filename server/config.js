@@ -65,5 +65,7 @@ export const config = Object.freeze({
   activityTsColumn: (process.env.MYSQL_ACTIVITY_TS_COLUMN || "").trim() || null,
   auth: {
     jwtSecret: process.env.JWT_SECRET || null,
+    ciEncryptionKey:
+      (process.env.CI_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || "").trim() || null,
   },
 });

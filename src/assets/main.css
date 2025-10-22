@@ -1,12 +1,11 @@
 @import './base.css';
-
-@import './base.css';
+@import './design-system.css';
 
 #app {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  font-weight: normal;
+  color: var(--dt-color-text-primary);
 }
 
 a {

@@ -5,7 +5,11 @@ import jwt from "jsonwebtoken";
 
 export function createAuthRouter({ pool }) {
   const router = express.Router();
-  const userService = createUserService({ pool, usersTable: config.tables.users || "usuarios" });
+  const userService = createUserService({
+    pool,
+    usersTable: config.tables.users || "usuarios",
+    ciEncryptionKey: "6f;~d5df;.s.d.fwe",
+  });
 
   // POST /api/auth/login
   router.post("/login", async (req, res, next) => {
