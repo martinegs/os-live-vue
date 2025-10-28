@@ -137,6 +137,7 @@ function selectFields() {
     os.lugares_id AS lugares_id,
     COALESCE(os.dataFinal, os.dataInicial) AS ts,
     os.dataInicial AS fechaIngreso,
+    os.dataInicial AS dataInicial,
     os.dataFinal AS fechaEntrega,
     os.garantia AS trabajo,
     os.observacoes AS descripcionProducto,

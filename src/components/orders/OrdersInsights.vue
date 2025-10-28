@@ -2,16 +2,9 @@
   <section class="orders-insights dt-surface dt-surface--elevated">
     <header class="orders-insights__header">
       <div>
-        <p class="dt-kicker">Insights de ordenes</p>
         <h2 class="orders-insights__title">Resumen en vivo</h2>
-        <p class="orders-insights__description">
-          Datos consolidados de produccion, recaudacion y desempeno diario.
-        </p>
       </div>
-      <div class="orders-insights__totals">
-        <span>{{ ordersTotal }} ordenes</span>
-        <span>{{ currency(totalFacturado) }} facturado</span>
-      </div>
+
     </header>
 
     <div class="orders-insights__visuals">

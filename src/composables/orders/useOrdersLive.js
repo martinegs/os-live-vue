@@ -88,6 +88,7 @@ function fromAPI(row) {
     senia: row.senia ?? null,
     lugares_id: row.lugares_id ?? null,
     ts: row.ts ?? row.dataAtualizacao ?? null,
+    dataInicial: row.dataInicial ?? null,
     cliente_id: row.cliente_id ?? row.clientes_id ?? row.clienteId ?? null,
     cliente_nombre: row.cliente_nombre ?? row.nomeCliente ?? row.cliente ?? null,
     area: row.area ?? row.nome_area ?? null,
@@ -102,7 +103,7 @@ function fromAPI(row) {
     descripcionProducto: row.descripcionProducto ?? row.observacoes ?? null,
     clase: row.clase ?? row.defeito ?? "seleccione",
     informacionGeneral: row.informacionGeneral ?? row.laudoTecnico ?? null,
-  fechaPago: row.fechaPago ?? null,
+    fechaPago: row.fechaPago ?? null,
     esAreaClientes: Boolean(row.esAreaClientes ?? (Number(row.pagadoAreaClientes ?? 0) === 1)),
     hayNOP: Boolean(row.hayNOP ?? row.numeroOperacion),
     activityTs: -Infinity,
@@ -603,25 +604,40 @@ export function useOrdersLive(options = {}) {
   // Filas de HOY para gráficos (usa fechaIngreso o ts, en horario local)
   const todaysRowsForCharts = computed(() => {
     const hoy = new Date();
-    const tzOffsetMs = hoy.getTimezoneOffset() * 60 * 1000;
-    const localMidnight = new Date(hoy.getTime() - tzOffsetMs);
-    const hoyStr = localMidnight.toISOString().slice(0, 10);
+    const hoyLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
 
     const rows = filasOrdenadas.value;
     const out = [];
+    const debugFechas = [];
     for (const row of rows) {
-      const fecha = row.ts ?? row.fechaIngreso ?? row.dataInicial ?? null;
+      const fecha = row.dataInicial ?? row.fechaIngreso ?? null;
       if (!fecha) continue;
+      // Convertir dataInicial a fecha local y comparar solo YYYY-MM-DD
       const d = new Date(fecha);
       if (Number.isNaN(d.getTime())) continue;
-      const local = new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
-      if (local === hoyStr) out.push(row);
+      const fechaLocal = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      debugFechas.push({ raw: fecha, fechaLocal });
+      if (fechaLocal === hoyLocal) out.push(row);
     }
+    console.log('[DEBUG] hoyLocal:', hoyLocal);
+    console.log('[DEBUG] dataInicial de todas las filas (primeros 5):', debugFechas.slice(0, 5));
+    console.log('[DEBUG] Filas encontradas para hoy:', out.length, out.map(r => r.status));
     return out;
   });
 
   const statsToday = computed(() => {
     const rows = todaysRowsForCharts.value;
+    // DEBUG: Mostrar agrupación de estados
+    setTimeout(() => {
+      try {
+        const estados = [];
+        for (const row of rows) {
+          estados.push(row.status || 'Sin estado');
+        }
+        // Mostrar todos los estados de las órdenes de hoy
+        console.log('[DEBUG] Estados de las órdenes de hoy:', estados);
+      } catch (e) { console.warn('[DEBUG] Error mostrando estados', e); }
+    }, 1000);
     const totalOrdenes = rows.length;
     let totalFacturado = 0;
     let totalPagado = 0;
