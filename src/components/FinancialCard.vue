@@ -56,21 +56,31 @@ const summaryDate = computed(() => props.summary?.date ?? null);
 
 const paymentMethodCards = computed(() => {
   const methods = props.summary?.byPaymentMethod ?? {};
+  const details = props.summary?.byPaymentMethodDetails ?? {};
+  
+  const formatValue = (val) => {
+    if (!props.formatCurrency) return `$ ${val.toFixed(2)}`;
+    return props.formatCurrency(val);
+  };
+
   return [
     {
       key: "mercado_pago",
       label: "Mercado Pago",
       amount: Number(methods.mercadoPago ?? methods.mp ?? 0),
+      hint: `Entraron: ${formatValue(details.mercadoPago?.entradas ?? 0)} y Salieron: ${formatValue(details.mercadoPago?.salidas ?? 0)}`,
     },
     {
       key: "efectivo",
       label: "Efectivo",
       amount: Number(methods.efectivo ?? 0),
+      hint: `Entraron: ${formatValue(details.efectivo?.entradas ?? 0)} y Salieron: ${formatValue(details.efectivo?.salidas ?? 0)}`,
     },
     {
       key: "cheque",
       label: "Cheque",
       amount: Number(methods.cheque ?? 0),
+      hint: `Entraron: ${formatValue(details.cheque?.entradas ?? 0)} y Salieron: ${formatValue(details.cheque?.salidas ?? 0)}`,
     },
   ];
 });

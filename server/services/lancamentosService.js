@@ -56,9 +56,20 @@ export function createLancamentosService({ pool, lancamentosTable = "lancamentos
       GROUP BY tipo
     `;
 
+    const sqlByPaymentMethodDetailed = `
+      SELECT
+        forma_pgto,
+        tipo,
+        COALESCE(SUM(CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2))), 0) AS total
+      FROM \`${lancamentosTable}\`
+      WHERE data_pagamento = ?
+      GROUP BY forma_pgto, tipo
+    `;
+
     const [rows] = await pool.query(sql, [targetDate]);
     const [paymentMethodRows] = await pool.query(sqlByPaymentMethod, [targetDate]);
     const [typeRows] = await pool.query(sqlByType, [targetDate]);
+    const [paymentMethodDetailedRows] = await pool.query(sqlByPaymentMethodDetailed, [targetDate]);
     
     const row = rows[0] || {};
     
@@ -79,6 +90,36 @@ export function createLancamentosService({ pool, lancamentosTable = "lancamentos
         byPaymentMethod.efectivo += total;
       } else if (method.includes('cheque')) {
         byPaymentMethod.cheque += total;
+      }
+    });
+
+    // Agrupar detalles por forma de pago (entradas y salidas)
+    const byPaymentMethodDetails = {
+      mercadoPago: { entradas: 0, salidas: 0 },
+      efectivo: { entradas: 0, salidas: 0 },
+      cheque: { entradas: 0, salidas: 0 },
+    };
+
+    paymentMethodDetailedRows.forEach((pmRow) => {
+      const method = String(pmRow.forma_pgto || '').toLowerCase();
+      const tipo = String(pmRow.tipo || '').toLowerCase();
+      const total = Number(pmRow.total || 0);
+      
+      let targetMethod = null;
+      if (method.includes('mercado') || method.includes('mp')) {
+        targetMethod = 'mercadoPago';
+      } else if (method.includes('efectivo')) {
+        targetMethod = 'efectivo';
+      } else if (method.includes('cheque')) {
+        targetMethod = 'cheque';
+      }
+
+      if (targetMethod) {
+        if (tipo === 'gasto') {
+          byPaymentMethodDetails[targetMethod].salidas += total;
+        } else if (tipo === 'venta' || tipo === 'adelanto') {
+          byPaymentMethodDetails[targetMethod].entradas += total;
+        }
       }
     });
 
@@ -108,6 +149,7 @@ export function createLancamentosService({ pool, lancamentosTable = "lancamentos
       operaciones: Number(row.operaciones || 0),
       totalNeto: Number(row.totalNeto || 0),
       byPaymentMethod,
+      byPaymentMethodDetails,
       byType,
     };
   }

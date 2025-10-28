@@ -492,7 +492,10 @@ const projectedTomorrow = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--dt-gap-sm);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .orders-insights__pie-chart {
