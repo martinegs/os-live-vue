@@ -1,5 +1,5 @@
 <template>
-  <div class="insight-card kpi-lugares-card kpi-lugares-big">
+  <div class="insight-card kpi-lugares-card kpi-lugares-big dt-card dt-card--glow">
     <div class="kpi-header">
       <span class="insight-label">Órdenes por Sucursal</span>
     </div>
@@ -191,11 +191,7 @@ function lighten(hex, amount = 0.1) {
 
 <style scoped>
 .kpi-lugares-card {
-  background: linear-gradient(135deg, rgba(56,189,248,0.06), rgba(251,191,36,0.03));
-  border: 1px solid rgba(148,163,184,0.06);
-  padding: 20px;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  padding: var(--dt-gap-md);
 }
 
 .kpi-header {

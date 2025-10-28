@@ -36,12 +36,12 @@
         <p class="orders-live__metric-value">{{ formatCurrency(paymentsSummaryTotal) }}</p>
         <p class="orders-live__metric-hint">Pagos confirmados</p>
       </article>
-      <article class="orders-live__metric dt-card">
+      <article class="orders-live__metric dt-card dt-card--glow">
         <p class="orders-live__metric-label">Metros hoy</p>
         <p class="orders-live__metric-value">{{ formatNumber(metersToday) }}</p>
         <p class="orders-live__metric-hint">Produccion registrada</p>
       </article>
-      <article class="orders-live__metric dt-card">
+      <article class="orders-live__metric dt-card dt-card--glow">
         <p class="orders-live__metric-label">Alertas</p>
         <p
           class="orders-live__metric-value"
@@ -70,6 +70,7 @@
           @load-more="loadMoreRows"
         />
       </div>
+      <KpiLugares class="orders-live__board-kpi" :rows="visibleRows" />
     </section>
 
     <section class="orders-live__summary-cards">
@@ -122,6 +123,7 @@ import OrdersModal from "./orders/OrdersModal.vue";
 import OrdersInsights from "./orders/OrdersInsights.vue";
 import AttendanceCard from "./AttendanceCard.vue";
 import FinancialCard from "./FinancialCard.vue";
+import KpiLugares from "./KpiLugares.vue";
 import LoginModal from "./LoginModal.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 import { getSessionRemainingMs, isAuthenticated, logout } from "../services/authService";
@@ -391,6 +393,10 @@ defineExpose({ openLogin });
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(11, 18, 35, 0.8);
+}
+
+.orders-live__board-kpi {
+  width: 100%;
 }
 
 .orders-live__summary-cards {

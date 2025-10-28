@@ -138,7 +138,6 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import KpiLugares from "../KpiLugares.vue";
 
 const props = defineProps({
   stats: {
