@@ -61,19 +61,16 @@ const paymentMethodCards = computed(() => {
       key: "mercado_pago",
       label: "Mercado Pago",
       amount: Number(methods.mercadoPago ?? methods.mp ?? 0),
-      hint: "Recaudado hoy",
     },
     {
       key: "efectivo",
       label: "Efectivo",
       amount: Number(methods.efectivo ?? 0),
-      hint: "Recaudado hoy",
     },
     {
       key: "cheque",
       label: "Cheque",
       amount: Number(methods.cheque ?? 0),
-      hint: "Recaudado hoy",
     },
   ];
 });

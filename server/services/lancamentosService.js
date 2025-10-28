@@ -34,10 +34,15 @@ export function createLancamentosService({ pool, lancamentosTable = "lancamentos
     const sqlByPaymentMethod = `
       SELECT
         forma_pgto,
-        COALESCE(SUM(CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2))), 0) AS total
+        COALESCE(SUM(
+          CASE 
+            WHEN tipo = 'Gasto' THEN -CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2))
+            ELSE CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2))
+          END
+        ), 0) AS total
       FROM \`${lancamentosTable}\`
       WHERE data_pagamento = ?
-        AND (tipo = 'Venta' OR tipo = 'Adelanto')
+        AND (tipo = 'Venta' OR tipo = 'Adelanto' OR tipo = 'Gasto')
       GROUP BY forma_pgto
     `;
 

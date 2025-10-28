@@ -4,7 +4,6 @@
       <div>
         <h2 class="orders-insights__title">Resumen en vivo</h2>
       </div>
-
     </header>
 
     <div class="orders-insights__visuals">
@@ -117,41 +116,7 @@
         </div>
       </section>
     </div>
-    <KpiLugares :rows="rows" class="orders-insights__kpi" />
 
-    <section class="orders-insights__table dt-surface">
-      <header class="orders-insights__table-header">
-        <div>
-          <h3>Recaudacion diaria</h3>
-          <p>Comparativo de los ultimos dias y proyeccion</p>
-        </div>
-        <span class="orders-insights__tag">Proyeccion: {{ currency(projectedTomorrow) }}</span>
-      </header>
-      <div class="orders-insights__table-scroll dt-scroll">
-        <table class="dt-table">
-          <thead>
-            <tr>
-              <th>Concepto</th>
-              <th>Hace 3</th>
-              <th>Hace 2</th>
-              <th>Ayer</th>
-              <th>Hoy</th>
-              <th>Proy. manana</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Total neto recibido</td>
-              <td>{{ currency(payTotals[0]) }}</td>
-              <td>{{ currency(payTotals[1]) }}</td>
-              <td>{{ currency(payTotals[2]) }}</td>
-              <td>{{ currency(payTotals[3]) }}</td>
-              <td>{{ currency(projectedTomorrow) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
   </section>
 </template>
 
@@ -296,43 +261,39 @@ onMounted(async () => {
 });
 
 function calculateProjection({ d3, d2, ayer, hoy }) {
-  const values = {
-    d3: Number(d3 ?? 0),
-    d2: Number(d2 ?? 0),
-    ayer: Number(ayer ?? 0),
-    hoy: Number(hoy ?? 0),
-  };
-
-  if (values.hoy > 0 && values.ayer > 0) {
-    const delta = values.hoy - values.ayer;
-    return Math.max(0, Math.round((values.hoy + delta) * 100) / 100);
+  const values = [Number(d3 ?? 0), Number(d2 ?? 0), Number(ayer ?? 0), Number(hoy ?? 0)];
+  const nonZero = values.filter((v) => v !== 0);
+  if (values[3] > 0 && values[2] > 0) {
+    const delta = values[3] - values[2];
+    return Math.max(0, Math.round((values[3] + delta) * 100) / 100);
   }
-
-  if (values.hoy > 0 && values.ayer <= 0) {
-    return Math.round(values.hoy * 100) / 100;
+  if (values[3] > 0 && values[2] <= 0) {
+    return Math.round(values[3] * 100) / 100;
   }
-
-  if (values.ayer > 0 && values.hoy <= 0) {
-    return Math.round(values.ayer * 100) / 100;
+  if (values[2] > 0 && values[3] <= 0) {
+    return Math.round(values[2] * 100) / 100;
   }
-
-  const recent = [values.d3, values.d2, values.ayer, values.hoy].filter((value) => value > 0);
-  if (recent.length) {
-    const average = recent.reduce((sum, value) => sum + value, 0) / recent.length;
+  if (nonZero.length) {
+    const average = nonZero.reduce((sum, value) => sum + value, 0) / nonZero.length;
     return Math.round(average * 100) / 100;
   }
-
   return 0;
 }
 
-const projectedTomorrow = computed(() =>
-  calculateProjection({
+const projectedTomorrow = computed(() => {
+  const valores = {
     d3: payTotals.value[0],
     d2: payTotals.value[1],
     ayer: payTotals.value[2],
     hoy: payTotals.value[3],
-  }),
-);
+  };
+  const proy = calculateProjection(valores);
+  console.log('[OrdersInsights] Proyección mañana:', {
+    ...valores,
+    proy
+  });
+  return proy;
+});
 </script>
 
 <style scoped>
@@ -630,12 +591,6 @@ const projectedTomorrow = computed(() =>
   color: var(--dt-color-text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.orders-insights__kpi {
-  width: 100%;
-  margin-top: calc(var(--dt-gap-xl) * 0.6);
-  margin-bottom: calc(var(--dt-gap-xl) * 0.8);
 }
 
 .orders-insights__table {
