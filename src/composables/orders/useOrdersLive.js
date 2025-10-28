@@ -646,6 +646,7 @@ export function useOrdersLive(options = {}) {
     let ordenesConMetros = 0;
     const estadoCount = new Map();
     const pagoCount = new Map();
+    const claseCount = new Map();
 
     for (const row of rows) {
       const valorTotal = Number(row.valorTotal ?? 0) || 0;
@@ -666,6 +667,9 @@ export function useOrdersLive(options = {}) {
 
       const pagoLabel = (row.statusPago || "Sin pago").trim() || "Sin pago";
       pagoCount.set(pagoLabel, (pagoCount.get(pagoLabel) ?? 0) + 1);
+
+      const claseLabel = (row.clase || "Sin clasificar").trim() || "Sin clasificar";
+      claseCount.set(claseLabel, (claseCount.get(claseLabel) ?? 0) + 1);
     }
 
     const ticketPromedio = totalOrdenes ? totalFacturado / totalOrdenes : 0;
@@ -683,6 +687,7 @@ export function useOrdersLive(options = {}) {
       estadoCount,
       estadoTotal: estadoCount.size,
       pagoCount,
+      claseCount,
     };
   });
 
@@ -709,6 +714,24 @@ export function useOrdersLive(options = {}) {
     const palette = ["#22c55e", "#38bdf8", "#f97316", "#facc15", "#a855f7", "#ef4444"];
     let index = 0;
     return Array.from(statsToday.value.pagoCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, cantidad]) => {
+        const color = palette[index % palette.length];
+        index += 1;
+        return {
+          label,
+          cantidad,
+          porcentaje: total ? (cantidad / total) * 100 : 0,
+          color,
+        };
+      });
+  });
+
+  const claseChartDataToday = computed(() => {
+    const total = statsToday.value.totalOrdenes || 1;
+    const palette = ["#14b8a6", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#84cc16"];
+    let index = 0;
+    return Array.from(statsToday.value.claseCount.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([label, cantidad]) => {
         const color = palette[index % palette.length];
@@ -910,6 +933,7 @@ export function useOrdersLive(options = {}) {
     fetchPaymentsSummary,
     estadoChartDataToday,
     pagoChartDataToday,
+    claseChartDataToday,
     estadoPieSegmentsToday,
     statsToday,
   };

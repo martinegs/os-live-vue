@@ -90,6 +90,7 @@
       :estado-chart-data="estadoChartDataToday"
       :estado-pie-segments="estadoPieSegmentsToday"
       :pago-chart-data="pagoChartDataToday"
+      :clase-chart-data="claseChartDataToday"
       :format-currency="formatCurrency"
       :rows="visibleRows"
       :resumen-hoy="resumenHoy"
@@ -147,6 +148,7 @@ const {
   estadoChartDataToday,
   estadoPieSegmentsToday,
   pagoChartDataToday,
+  claseChartDataToday,
   editing,
   openEditor,
   openCreator,

@@ -90,6 +90,33 @@
           </div>
         </div>
       </section>
+
+      <section v-if="claseChartData.length" class="orders-insights__chart orders-insights__chart--secondary">
+        <header class="orders-insights__chart-header">
+          <div>
+            <h3>Tipos de trabajo</h3>
+            <p>Distribucion por clase del dia</p>
+          </div>
+          <span class="orders-insights__tag">{{ claseChartData.length }} tipos</span>
+        </header>
+        <div class="orders-insights__payments">
+          <div v-for="item in claseChartData" :key="item.label" class="orders-insights__payment-row">
+            <div class="orders-insights__payment-meta">
+              <span class="orders-insights__dot" :style="{ background: item.color }"></span>
+              <span class="orders-insights__payment-label">{{ item.label }}</span>
+            </div>
+            <div class="orders-insights__payment-track">
+              <span
+                class="orders-insights__payment-fill"
+                :style="{ width: item.porcentaje.toFixed(0) + '%', background: item.color }"
+              ></span>
+            </div>
+            <span class="orders-insights__payment-value">
+              {{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
     <KpiLugares :rows="rows" class="orders-insights__kpi" />
 
@@ -150,6 +177,10 @@ const props = defineProps({
     default: () => [],
   },
   pagoChartData: {
+    type: Array,
+    default: () => [],
+  },
+  claseChartData: {
     type: Array,
     default: () => [],
   },
