@@ -89,31 +89,30 @@
             </span>
           </div>
         </div>
-      </section>
 
-      <section v-if="claseChartData.length" class="orders-insights__chart orders-insights__chart--secondary">
-        <header class="orders-insights__chart-header">
-          <div>
-            <h3>Tipos de trabajo</h3>
-            <p>Distribucion por clase del dia</p>
-          </div>
-          <span class="orders-insights__tag">{{ claseChartData.length }} tipos</span>
-        </header>
-        <div class="orders-insights__payments">
-          <div v-for="item in claseChartData" :key="item.label" class="orders-insights__payment-row">
-            <div class="orders-insights__payment-meta">
-              <span class="orders-insights__dot" :style="{ background: item.color }"></span>
-              <span class="orders-insights__payment-label">{{ item.label }}</span>
+        <div v-if="claseChartData.length" class="orders-insights__subsection">
+          <header class="orders-insights__chart-header orders-insights__chart-header--compact">
+            <div>
+              <h3>Tipos de trabajo</h3>
             </div>
-            <div class="orders-insights__payment-track">
-              <span
-                class="orders-insights__payment-fill"
-                :style="{ width: item.porcentaje.toFixed(0) + '%', background: item.color }"
-              ></span>
+            <span class="orders-insights__tag">{{ claseChartData.length }} tipos</span>
+          </header>
+          <div class="orders-insights__payments">
+            <div v-for="item in claseChartData" :key="item.label" class="orders-insights__payment-row">
+              <div class="orders-insights__payment-meta">
+                <span class="orders-insights__dot" :style="{ background: item.color }"></span>
+                <span class="orders-insights__payment-label">{{ item.label }}</span>
+              </div>
+              <div class="orders-insights__payment-track">
+                <span
+                  class="orders-insights__payment-fill"
+                  :style="{ width: item.porcentaje.toFixed(0) + '%', background: item.color }"
+                ></span>
+              </div>
+              <span class="orders-insights__payment-value">
+                {{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)
+              </span>
             </div>
-            <span class="orders-insights__payment-value">
-              {{ item.cantidad }} ({{ item.porcentaje.toFixed(0) }}%)
-            </span>
           </div>
         </div>
       </section>
@@ -673,6 +672,32 @@ const projectedTomorrow = computed(() =>
 
 .orders-insights__table-scroll {
   width: 100%;
+}
+
+.orders-insights__subsection {
+  margin-top: var(--dt-gap-lg);
+  padding-top: var(--dt-gap-lg);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  margin-bottom: var(--dt-gap-lg);
+}
+
+
+.orders-insights__chart-header--compact {
+  padding-bottom: var(--dt-gap-md);
+}
+.orders-insights__chart-header--compact h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--dt-color-text-primary);
+}
+
+.orders-insights__chart-header--compact p {
+  margin: 4px 0 0;
+  font-size: var(--dt-font-size-xs);
+  color: var(--dt-color-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 860px) {
