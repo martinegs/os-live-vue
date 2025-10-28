@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="orders-live">
     <section class="orders-live__hero dt-surface dt-surface--elevated">
       <div>
@@ -183,7 +183,7 @@ function formatNumber(value) {
 }
 
 const paymentsSummaryTotal = computed(
-  () => resumenPagos.value?.aggregate?.totalNeto ?? 0
+  () => resumenPagos.value?.totalNeto ?? 0
 );
 const metersToday = computed(() => resumenHoy.value?.metros ?? 0);
 

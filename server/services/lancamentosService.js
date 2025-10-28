@@ -37,6 +37,7 @@ export function createLancamentosService({ pool, lancamentosTable = "lancamentos
         COALESCE(SUM(CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2))), 0) AS total
       FROM \`${lancamentosTable}\`
       WHERE data_pagamento = ?
+        AND (tipo = 'Venta' OR tipo = 'Adelanto')
       GROUP BY forma_pgto
     `;
 
