@@ -14,24 +14,6 @@
       </div>
     </header>
 
-    <div class="orders-insights__cards">
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Mercado Pago</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.mercadoPago ?? 0) }}</p>
-        <p class="orders-insights__card-hint">Recaudado hoy</p>
-      </article>
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Efectivo</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.efectivo ?? 0) }}</p>
-        <p class="orders-insights__card-hint">Recaudado hoy</p>
-      </article>
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Cheque</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.cheque ?? 0) }}</p>
-        <p class="orders-insights__card-hint">Recaudado hoy</p>
-      </article>
-    </div>
-
     <div class="orders-insights__visuals">
       <section class="orders-insights__chart">
         <header class="orders-insights__chart-header">
@@ -116,25 +98,6 @@
         </div>
       </section>
     </div>
-
-    <div class="orders-insights__cards" style="margin-top: 2rem;">
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Ventas</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.venta?.total ?? 0) }}</p>
-        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.venta?.cantidad ?? 0 }} operaciones</p>
-      </article>
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Adelantos</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.adelanto?.total ?? 0) }}</p>
-        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.adelanto?.cantidad ?? 0 }} operaciones</p>
-      </article>
-      <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Gastos</p>
-        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.gasto?.total ?? 0) }}</p>
-        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.gasto?.cantidad ?? 0 }} operaciones</p>
-      </article>
-    </div>
-
     <KpiLugares :rows="rows" class="orders-insights__kpi" />
 
     <section class="orders-insights__table dt-surface">

@@ -1,53 +1,39 @@
-﻿<template>
-  <section class="financial-card dt-card">
+<template>
+  <section class="financial-card dt-card dt-card--glow">
     <header class="financial-card__header">
       <div>
-        <p class="financial-card__kicker">Ingresos</p>
         <h3 class="financial-card__title">Financiero</h3>
-        <p v-if="summaryDate" class="financial-card__meta">Corte {{ summaryDate }}</p>
       </div>
-      <span class="financial-card__badge" v-if="totalNeto > 0">
-        {{ formatCurrency(totalNeto) }}
-      </span>
     </header>
 
-    <div class="financial-card__totals">
-      <article class="financial-card__stat">
-        <p class="financial-card__stat-label">Recaudado</p>
-        <p class="financial-card__stat-value">
-          {{ formatCurrency(totalNeto) }}
-        </p>
-      </article>
-      <article class="financial-card__stat">
-        <p class="financial-card__stat-label">Operaciones</p>
-        <p class="financial-card__stat-value financial-card__stat-value--muted">
-          {{ operaciones }}
-        </p>
-      </article>
-      <article class="financial-card__stat">
-        <p class="financial-card__stat-label">Ticket promedio</p>
-        <p class="financial-card__stat-value financial-card__stat-value--muted">
-          {{ formatCurrency(ticketPromedio) }}
-        </p>
-      </article>
+    <div class="financial-card__group">
+      <h4 class="financial-card__group-title">Medios de entrada</h4>
+      <div class="financial-card__grid">
+        <article
+          v-for="item in paymentMethodCards"
+          :key="item.key"
+          class="orders-insights__card dt-card"
+        >
+          <p class="orders-insights__card-label">{{ item.label }}</p>
+          <p class="orders-insights__card-value">{{ formatCurrency(item.amount) }}</p>
+          <p class="orders-insights__card-hint">{{ item.hint }}</p>
+        </article>
+      </div>
     </div>
 
-    <div v-if="hasItems" class="financial-card__list">
-      <h4 class="financial-card__list-title">Origen de ingresos</h4>
-      <ul>
-        <li v-for="item in topItems" :key="item.key" class="financial-card__list-item">
-          <div>
-            <span class="financial-card__item-name">{{ item.origen }}</span>
-            <span class="financial-card__item-subtitle">{{ item.operaciones }} operaciones</span>
-          </div>
-          <span class="financial-card__item-amount">
-            {{ formatCurrency(item.totalNeto ?? item.totalBruto ?? 0) }}
-          </span>
-        </li>
-      </ul>
-    </div>
-    <div v-else class="financial-card__empty">
-      <p>Sin movimientos registrados para hoy.</p>
+    <div class="financial-card__group">
+      <h4 class="financial-card__group-title">Tipo de movimiento</h4>
+      <div class="financial-card__grid">
+        <article
+          v-for="item in typeCards"
+          :key="item.key"
+          class="orders-insights__card dt-card"
+        >
+          <p class="orders-insights__card-label">{{ item.label }}</p>
+          <p class="orders-insights__card-value">{{ formatCurrency(item.amount) }}</p>
+          <p class="orders-insights__card-hint">{{ item.hint }}</p>
+        </article>
+      </div>
     </div>
   </section>
 </template>
@@ -62,44 +48,83 @@ const props = defineProps({
   },
   formatCurrency: {
     type: Function,
-    required: true,
+    default: null,
   },
 });
 
-const formatCurrency = (value) => {
+const summaryDate = computed(() => props.summary?.date ?? null);
+
+const paymentMethodCards = computed(() => {
+  const methods = props.summary?.byPaymentMethod ?? {};
+  return [
+    {
+      key: "mercado_pago",
+      label: "Mercado Pago",
+      amount: Number(methods.mercadoPago ?? methods.mp ?? 0),
+      hint: "Recaudado hoy",
+    },
+    {
+      key: "efectivo",
+      label: "Efectivo",
+      amount: Number(methods.efectivo ?? 0),
+      hint: "Recaudado hoy",
+    },
+    {
+      key: "cheque",
+      label: "Cheque",
+      amount: Number(methods.cheque ?? 0),
+      hint: "Recaudado hoy",
+    },
+  ];
+});
+
+const typeCards = computed(() => {
+  const types = props.summary?.byType ?? {};
+  return [
+    {
+      key: "venta",
+      label: "Ventas",
+      amount: Number(types.venta?.total ?? 0),
+      hint: `${Number(types.venta?.cantidad ?? 0)} operaciones`,
+    },
+    {
+      key: "adelanto",
+      label: "Adelantos",
+      amount: Number(types.adelanto?.total ?? 0),
+      hint: `${Number(types.adelanto?.cantidad ?? 0)} operaciones`,
+    },
+    {
+      key: "gasto",
+      label: "Gastos",
+      amount: Number(types.gasto?.total ?? 0),
+      hint: `${Number(types.gasto?.cantidad ?? 0)} operaciones`,
+    },
+  ];
+});
+
+function formatCurrency(value) {
   if (typeof props.formatCurrency === "function") {
     return props.formatCurrency(value);
   }
   const numeric = Number(value ?? 0);
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(numeric);
-};
-const aggregate = computed(() => props.summary?.aggregate ?? {});
-const items = computed(() => props.summary?.items ?? []);
-
-const totalNeto = computed(() => Number(aggregate.value.totalNeto ?? 0));
-const operaciones = computed(() => Number(aggregate.value.operaciones ?? 0));
-const ticketPromedio = computed(() => {
-  if (!operaciones.value) return 0;
-  return totalNeto.value / operaciones.value;
-});
-
-const summaryDate = computed(() => props.summary?.date ?? null);
-const hasItems = computed(() => items.value.length > 0);
-const topItems = computed(() => items.value.slice(0, 3));
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(numeric);
+}
 </script>
 
 <style scoped>
 .financial-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   gap: var(--dt-gap-md);
-  min-height: 280px;
-  background: rgba(12, 18, 38, 0.72);
-  border: 1px solid rgba(99, 102, 241, 0.24);
-  box-shadow: inset 0 1px 0 rgba(226, 232, 240, 0.12);
 }
 
 .financial-card__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--dt-gap-md);
 }
@@ -107,8 +132,8 @@ const topItems = computed(() => items.value.slice(0, 3));
 .financial-card__kicker {
   margin: 0 0 4px;
   font-size: var(--dt-font-size-xs);
-  letter-spacing: 0.14em;
   text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: var(--dt-color-text-muted);
 }
 
@@ -120,123 +145,74 @@ const topItems = computed(() => items.value.slice(0, 3));
   color: var(--dt-color-text-primary);
 }
 
-.financial-card__meta {
-  margin: 6px 0 0;
+.financial-card__date {
   font-size: var(--dt-font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--dt-color-text-muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.financial-card__badge {
-  align-self: flex-start;
-  padding: 6px 12px;
-  border-radius: 999px;
+.financial-card__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dt-gap-sm);
+}
+
+.financial-card__group-title {
+  margin: 0;
   font-size: var(--dt-font-size-xs);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--dt-color-accent);
-  border: 1px solid rgba(99, 102, 241, 0.45);
-  background: rgba(99, 102, 241, 0.14);
+  color: var(--dt-color-text-muted);
 }
 
-.financial-card__totals {
+.financial-card__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--dt-gap-md);
+  gap: var(--dt-gap-sm);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.financial-card__stat {
+.orders-insights__card {
+  background: rgba(10, 18, 38, 0.68);
+  border-radius: var(--dt-radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.financial-card__stat-label {
+.orders-insights__card-label {
   margin: 0;
   font-size: var(--dt-font-size-xs);
+  color: var(--dt-color-text-muted);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--dt-color-text-muted);
 }
 
-.financial-card__stat-value {
+.orders-insights__card-value {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.35rem;
   font-weight: 600;
   color: var(--dt-color-text-primary);
 }
 
-.financial-card__stat-value--muted {
-  font-size: 1.25rem;
-}
-
-.financial-card__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dt-gap-sm);
-}
-
-.financial-card__list-title {
+.orders-insights__card-hint {
   margin: 0;
   font-size: var(--dt-font-size-xs);
+  color: var(--dt-color-text-secondary);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--dt-color-text-muted);
-}
-
-.financial-card__list ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.financial-card__list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--dt-gap-sm);
-  padding: 10px 12px;
-  border-radius: var(--dt-radius-sm);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(8, 16, 34, 0.64);
-}
-
-.financial-card__item-name {
-  display: block;
-  font-size: var(--dt-font-size-sm);
-  font-weight: 500;
-  color: var(--dt-color-text-primary);
-}
-
-.financial-card__item-subtitle {
-  display: block;
-  font-size: var(--dt-font-size-xs);
-  color: var(--dt-color-text-muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.financial-card__item-amount {
-  font-size: var(--dt-font-size-sm);
-  font-weight: 600;
-  color: var(--dt-color-accent);
-}
-
-.financial-card__empty {
-  padding: 42px 0;
-  text-align: center;
-  color: var(--dt-color-text-muted);
-  font-size: var(--dt-font-size-sm);
 }
 
 @media (max-width: 960px) {
   .financial-card__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .financial-card__grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

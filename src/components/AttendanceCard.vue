@@ -219,7 +219,7 @@ onMounted(fetchAttendance);
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 360px;
+  max-height: 540px;
   overflow-y: auto;
   scrollbar-width: thin;
 }
