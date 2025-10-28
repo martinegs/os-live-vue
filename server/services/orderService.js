@@ -124,16 +124,7 @@ function normalizeOrderInput(input, prev, activityTsColumn) {
   return result;
 }
 
-function selectFields({ paymentsTable, orderPaymentsTable } = {}) {
-  // Subconsulta para obtener la última fecha de pago asociada a la OS sin requerir columna en la tabla de órdenes.
-  const fechaPagoExpr = paymentsTable && orderPaymentsTable
-    ? `(
-      SELECT MAX(pagos.fecha)
-      FROM \`${orderPaymentsTable}\` rel
-      INNER JOIN \`${paymentsTable}\` pagos ON pagos.idPago = rel.pagos_id
-      WHERE rel.os_id = os.idOs
-    )`
-    : `NULL`;
+function selectFields() {
   return `
     os.idOs AS id,
     os.status AS status,
@@ -162,7 +153,7 @@ function selectFields({ paymentsTable, orderPaymentsTable } = {}) {
     usuarios.idUsuarios AS usuario_id,
     usuarios.nome AS usuario_nombre,
     COALESCE(lugares_entrega.lugar, '') AS lugarEntrega,
-    ${fechaPagoExpr} AS fechaPago
+    NULL AS fechaPago
   `;
 }
 
@@ -177,7 +168,7 @@ export function createOrderService({
     const limitClause = limit ? "LIMIT ?" : "";
     const sql = `
       SELECT
-        ${selectFields({ paymentsTable, orderPaymentsTable })}
+        ${selectFields()}
       FROM \`${ordersTable}\` os
       LEFT JOIN clientes ON clientes.idClientes = os.clientes_id
       LEFT JOIN usuarios ON usuarios.idUsuarios = os.usuarios_id
@@ -193,7 +184,7 @@ export function createOrderService({
   async function fetchOrderById(id) {
     const sql = `
       SELECT
-        ${selectFields({ paymentsTable, orderPaymentsTable })}
+        ${selectFields()}
       FROM \`${ordersTable}\` os
       LEFT JOIN clientes ON clientes.idClientes = os.clientes_id
       LEFT JOIN usuarios ON usuarios.idUsuarios = os.usuarios_id

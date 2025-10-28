@@ -72,6 +72,15 @@
       </div>
     </section>
 
+    <section class="orders-live__summary-cards">
+      <AttendanceCard class="orders-live__summary-card" :api-origin="apiOrigin" />
+      <FinancialCard
+        class="orders-live__summary-card"
+        :summary="resumenPagos"
+        :format-currency="formatCurrency"
+      />
+    </section>
+
     <OrdersInsights
       class="orders-live__insights"
       :stats="stats"
@@ -111,6 +120,8 @@ import OrdersToolbar from "./orders/OrdersToolbar.vue";
 import OrdersTable from "./orders/OrdersTable.vue";
 import OrdersModal from "./orders/OrdersModal.vue";
 import OrdersInsights from "./orders/OrdersInsights.vue";
+import AttendanceCard from "./AttendanceCard.vue";
+import FinancialCard from "./FinancialCard.vue";
 import LoginModal from "./LoginModal.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 import { getSessionRemainingMs, isAuthenticated, logout } from "../services/authService";
@@ -143,7 +154,7 @@ const {
 } = useOrdersLive({
   apiUrl: `${baseApi}/api/os`,
   sseUrl: `${baseApi}/realtime/stream?channel=os`,
-  paymentsUrl: `${baseApi}/api/pagos/today`,
+  paymentsUrl: `${baseApi}/api/lancamentos/summary`,
   chunkSize: 30,
 });
 
@@ -169,7 +180,9 @@ function formatNumber(value) {
   return numberFormatter.format(value ?? 0);
 }
 
-const paymentsSummaryTotal = computed(() => resumenPagos.value?.aggregate?.totalNeto ?? 0);
+const paymentsSummaryTotal = computed(
+  () => resumenPagos.value?.aggregate?.totalNeto ?? 0
+);
 const metersToday = computed(() => resumenHoy.value?.metros ?? 0);
 
 function scheduleAutoLogout() {
@@ -378,6 +391,25 @@ defineExpose({ openLogin });
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(11, 18, 35, 0.8);
+}
+
+.orders-live__summary-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dt-gap-lg);
+  margin-top: var(--dt-gap-lg);
+}
+
+.orders-live__summary-card {
+  flex: 1 1 320px;
+  min-width: 320px;
+}
+
+@media (max-width: 960px) {
+  .orders-live__summary-card {
+    min-width: 0;
+    flex-basis: 100%;
+  }
 }
 
 .orders-live__insights {

@@ -9,7 +9,7 @@ export function createOrdersRouter({ orderService, broadcast }) {
   // Lista ordenes, con limite opcional para vistas rapidas.
   router.get("/", async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : null;
+      const limit = req.query.limit ? Number(req.query.limit) : 1000;
       const orders = await orderService.fetchOrders(limit);
       res.json(orders);
     } catch (error) {

@@ -47,7 +47,7 @@ export const config = Object.freeze({
   },
   tables: {
     orders: sanitizeTableName(process.env.MYSQL_ORDERS_TABLE, "os"),
-    payments: sanitizeTableName(process.env.MYSQL_PAYMENTS_TABLE, "pagos"),
+    payments: sanitizeTableName(process.env.MYSQL_PAYMENTS_TABLE, "lancamentos"),
     orderPayments: sanitizeTableName(
       process.env.MYSQL_ORDER_PAYMENTS_TABLE,
       "os_pagos"

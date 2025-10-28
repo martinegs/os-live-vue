@@ -271,7 +271,7 @@ export function useOrdersLive(options = {}) {
     createUrl = null,
     chunkSize = DEFAULT_CHUNK_SIZE,
   } = options;
-  const paymentsUrl = options.paymentsUrl || "/api/pagos/today";
+  const paymentsUrl = options.paymentsUrl || "/api/lancamentos/summary";
   const createEndpoint = (createUrl || apiUrl) || "/api/os";
   const updateEndpoint = (updateUrl || apiUrl) || "/api/os";
 
@@ -279,7 +279,7 @@ export function useOrdersLive(options = {}) {
   const apiStatus = ref("desconectado");
   const sseStatus = ref("desconectado");
   const alertsCount = ref(0);
-  const resumenPagos = ref({ date: '', items: [], aggregate: { totalNeto: 0, totalBruto: 0, totalDescuento: 0, operaciones: 0 } });
+  const resumenPagos = ref({ date: '', operaciones: 0, totalNeto: 0 });
   const formattedAlerts = computed(() => alertsCount.value.toString().padStart(2, "0"));
 
   const query = ref("");
@@ -366,11 +366,11 @@ export function useOrdersLive(options = {}) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       resumenPagos.value = body || resumenPagos.value;
-      console.info('[OrdersLive] resumenPagos cargado', { date: dateStr, aggregate: resumenPagos.value.aggregate });
+      console.info('[OrdersLive] resumenPagos cargado', { date: dateStr, totalNeto: resumenPagos.value.totalNeto });
       return resumenPagos.value;
     } catch (err) {
       console.warn('[OrdersLive] error fetchPaymentsSummary', err);
-      resumenPagos.value = resumenPagos.value || { date: dateStr, items: [], aggregate: { totalNeto: 0 } };
+      resumenPagos.value = resumenPagos.value || { date: dateStr, operaciones: 0, totalNeto: 0 };
       return resumenPagos.value;
     }
   }

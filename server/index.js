@@ -7,9 +7,10 @@ import { pool, verifyConnection } from "./db.js";
 import { httpLogger } from "./middleware/logger.js";
 import { createRealtimeHub } from "./realtime.js";
 import { createOrderService } from "./services/orderService.js";
-import { createPaymentService } from "./services/paymentService.js";
+import { createAttendanceService } from "./services/attendanceService.js";
 import { createOrdersRouter } from "./routes/orders.js";
-import { createPaymentsRouter } from "./routes/payments.js";
+import { createLancamentosRouter } from "./routes/lancamentos.js";
+import { createAttendanceRouter } from "./routes/attendance.js";
 import { createHealthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 
@@ -48,12 +49,8 @@ const orderService = createOrderService({
   orderPaymentsTable: config.tables.orderPayments,
   activityTsColumn: config.activityTsColumn,
 });
-const paymentService = createPaymentService({
-  pool,
-  paymentsTable: config.tables.payments,
-  ordersTable: config.tables.orders,
-  orderPaymentsTable: config.tables.orderPayments,
-});
+
+const attendanceService = createAttendanceService(pool);
 
 app.use(httpLogger());
 
@@ -75,8 +72,12 @@ app.use(
   createOrdersRouter({ orderService, broadcast: realtime.broadcast })
 );
 app.use(
-  "/api/pagos",
-  createPaymentsRouter({ paymentService })
+  "/api/lancamentos",
+  createLancamentosRouter({ pool, lancamentosTable: config.tables.payments })
+);
+app.use(
+  "/api/attendance",
+  createAttendanceRouter(attendanceService)
 );
 app.use(
   "/api/auth",

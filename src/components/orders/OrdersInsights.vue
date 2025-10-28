@@ -15,26 +15,20 @@
     </header>
 
     <div class="orders-insights__cards">
-      <article class="orders-insights__card dt-card dt-card--glow">
-        <p class="orders-insights__card-label">Pagado hoy</p>
-        <p class="orders-insights__card-value">
-          {{ currency(paymentsSummary?.aggregate?.totalNeto ?? 0) }}
-        </p>
-        <p class="orders-insights__card-hint">Recaudacion confirmada</p>
+      <article class="orders-insights__card dt-card">
+        <p class="orders-insights__card-label">Mercado Pago</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.mercadoPago ?? 0) }}</p>
+        <p class="orders-insights__card-hint">Recaudado hoy</p>
       </article>
       <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Ticket promedio hoy</p>
-        <p class="orders-insights__card-value">{{ todaysTicket }}</p>
-        <p class="orders-insights__card-hint">
-          {{ todaysOrders }} ordenes registradas
-        </p>
+        <p class="orders-insights__card-label">Efectivo</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.efectivo ?? 0) }}</p>
+        <p class="orders-insights__card-hint">Recaudado hoy</p>
       </article>
       <article class="orders-insights__card dt-card">
-        <p class="orders-insights__card-label">Metros hoy</p>
-        <p class="orders-insights__card-value">{{ formatNumber(resumenHoy?.metros ?? 0) }}</p>
-        <p class="orders-insights__card-hint">
-          {{ todaysOrdersWithMeters }} ordenes con metros
-        </p>
+        <p class="orders-insights__card-label">Cheque</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byPaymentMethod?.cheque ?? 0) }}</p>
+        <p class="orders-insights__card-hint">Recaudado hoy</p>
       </article>
     </div>
 
@@ -123,6 +117,24 @@
       </section>
     </div>
 
+    <div class="orders-insights__cards" style="margin-top: 2rem;">
+      <article class="orders-insights__card dt-card">
+        <p class="orders-insights__card-label">Ventas</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.venta?.total ?? 0) }}</p>
+        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.venta?.cantidad ?? 0 }} operaciones</p>
+      </article>
+      <article class="orders-insights__card dt-card">
+        <p class="orders-insights__card-label">Adelantos</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.adelanto?.total ?? 0) }}</p>
+        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.adelanto?.cantidad ?? 0 }} operaciones</p>
+      </article>
+      <article class="orders-insights__card dt-card">
+        <p class="orders-insights__card-label">Gastos</p>
+        <p class="orders-insights__card-value">{{ currency(paymentsSummary?.byType?.gasto?.total ?? 0) }}</p>
+        <p class="orders-insights__card-hint">{{ paymentsSummary?.byType?.gasto?.cantidad ?? 0 }} operaciones</p>
+      </article>
+    </div>
+
     <KpiLugares :rows="rows" class="orders-insights__kpi" />
 
     <section class="orders-insights__table dt-surface">
@@ -162,7 +174,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import KpiLugares from "../KpiLugares.vue";
 
 const props = defineProps({
@@ -203,6 +215,11 @@ const props = defineProps({
     default: () => ({ total: 0, metros: 0 }),
   },
 });
+
+// Debug: ver qué datos llegan
+watch(() => props.paymentsSummary, (newVal) => {
+  console.log('[OrdersInsights] paymentsSummary updated:', JSON.stringify(newVal, null, 2));
+}, { immediate: true, deep: true });
 
 function currency(value) {
   return props.formatCurrency(value ?? 0);
@@ -268,19 +285,13 @@ async function fetchPayTotalForDate(dateStr) {
       (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
     const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? (isDev ? "http://localhost:4000" : "");
     const baseApi = String(apiOrigin || "").replace(/\/$/, "");
-    const url = `${baseApi}/api/pagos/today?date=${encodeURIComponent(dateStr)}`;
+    const url = `${baseApi}/api/lancamentos/summary?date=${encodeURIComponent(dateStr)}`;
     const response = await fetch(url, { credentials: "omit" });
     if (!response.ok) {
       return 0;
     }
     const body = await response.json();
-    if (body?.aggregate && typeof body.aggregate.totalNeto === "number") {
-      return body.aggregate.totalNeto;
-    }
-    if (body?.mpOrders && typeof body.mpOrders.totalValorPagado === "number") {
-      return body.mpOrders.totalValorPagado;
-    }
-    return 0;
+    return body?.totalNeto || 0;
   } catch (error) {
     console.warn("[OrdersInsights] error fetching payments", error);
     return 0;
