@@ -104,6 +104,9 @@
       <LoginModal v-if="showLogin" @success="onLoginSuccess" @close="onLoginClose" />
     </transition>
 
+    <!-- Chat Widget -->
+    <ChatWidget v-if="authenticated" :api-origin="baseApi" />
+
     <div v-if="!authenticated" class="orders-live__overlay">
       <div class="orders-live__overlay-card">
         <h3>Sesion requerida</h3>
@@ -126,6 +129,7 @@ import AttendanceCard from "./AttendanceCard.vue";
 import FinancialCard from "./FinancialCard.vue";
 import KpiLugares from "./KpiLugares.vue";
 import LoginModal from "./LoginModal.vue";
+import ChatWidget from "./ChatWidget.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 import { getSessionRemainingMs, isAuthenticated, logout } from "../services/authService";
 

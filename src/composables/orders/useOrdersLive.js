@@ -378,6 +378,64 @@ export function useOrdersLive(options = {}) {
 
   // Subscribe to the realtime stream; merge payloads so UI stays in sync without full reloads.
   function conectarSSE() {
+    console.info("[OrdersLive] Polling activado - SSE deshabilitado por performance");
+    setSseStatus("conectado", "(polling)");
+    setEstadoUi("conectado (polling)");
+    // SSE completamente deshabilitado - demasiado lento
+    return;
+    
+    // Definir función apply primero
+    const apply = (tipo, ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        const row = fromEvent(msg, tipo);
+        if (!Number.isFinite(row.id)) return;
+        if (tipo === "delete") {
+          rowsMap.delete(row.id);
+        } else {
+          upsertRow(rowsMap, row);
+        }
+        registerAlert(tipo, row.id);
+      } catch (err) {
+        console.error(`[OrdersLive] Error procesando evento ${tipo}:`, err);
+      }
+    };
+    
+    import('../../services/realtimeService.js').then(service => {
+      // Conectar (si no está ya conectado)
+      service.connect();
+      
+      // Registrar listeners para eventos de órdenes
+      service.on('os:new', (data) => {
+        console.log('[OrdersLive] os:new recibido:', data);
+        apply('new', { data: JSON.stringify(data) });
+      });
+      
+      service.on('os:update', (data) => {
+        console.log('[OrdersLive] os:update recibido:', data);
+        apply('update', { data: JSON.stringify(data) });
+      });
+      
+      service.on('os:delete', (data) => {
+        console.log('[OrdersLive] os:delete recibido:', data);
+        apply('delete', { data: JSON.stringify(data) });
+      });
+      
+      service.on('connected', () => {
+        console.log('[OrdersLive] SSE conectado vía servicio unificado');
+        setSseStatus("conectado", "");
+        setEstadoUi("conectado (SSE abierto)");
+      });
+      
+      service.on('error', () => {
+        console.warn('[OrdersLive] SSE error vía servicio unificado');
+        setSseStatus("desconectado", "(fallo SSE)");
+        setEstadoUi("reconectando...");
+      });
+    });
+    
+    // CÓDIGO SSE ANTIGUO DESHABILITADO
+    /*
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       console.warn("[OrdersLive] SSE no disponible en este entorno");
       return;
@@ -414,9 +472,12 @@ export function useOrdersLive(options = {}) {
       setSseStatus("desconectado", "(fallo SSE)");
       setEstadoUi("reconectando...");
     };
+    */ // FIN CÓDIGO SSE DESHABILITADO
   }
 
   function startTicker() {
+    console.info("[OrdersLive] startTicker deshabilitado");
+    /*
     ticker = setInterval(() => {
       const now = Date.now();
       for (const [id, row] of rowsMap) {
@@ -425,9 +486,12 @@ export function useOrdersLive(options = {}) {
         }
       }
     }, 500);
+    */
   }
 
   function stopRealtime() {
+    console.info("[OrdersLive] stopRealtime llamado (SSE ya deshabilitado)");
+    /*
     if (es) {
       es.close();
       es = undefined;
@@ -436,6 +500,7 @@ export function useOrdersLive(options = {}) {
       clearInterval(ticker);
       ticker = undefined;
     }
+    */
   }
 
   function openEditor(row) {

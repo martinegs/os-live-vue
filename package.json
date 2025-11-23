@@ -7,12 +7,10 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "concurrently \"npm:dev:client\" \"npm:dev:api\"",
+    "dev": "vite dev",
     "dev:client": "vite dev",
     "build": "vite build",
-    "preview": "vite preview",
-    "dev:api": "nodemon --watch server server/index.js",
-    "dev:full": "npm run dev"
+    "preview": "vite preview"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

@@ -13,13 +13,23 @@ export async function login(email, senha) {
     body: JSON.stringify({ email, senha }),
   });
   const data = await res.json();
+  console.log('[authService] Login response:', data);
   if (!res.ok) throw new Error(data?.message || "Login failed");
   // Guarda token y user minimal en localStorage si vienen
-  if (data.token) localStorage.setItem(AUTH_KEY, data.token);
-  if (data.user) localStorage.setItem(AUTH_USER, JSON.stringify(data.user));
+  if (data.token) {
+    localStorage.setItem(AUTH_KEY, data.token);
+    console.log('[authService] Token guardado');
+  }
+  if (data.user) {
+    localStorage.setItem(AUTH_USER, JSON.stringify(data.user));
+    console.log('[authService] Usuario guardado:', data.user);
+  } else {
+    console.warn('[authService] No se recibió objeto user en la respuesta');
+  }
   // Guardar expiración: ahora + SESSION_MS
   const expiresAt = Date.now() + SESSION_MS;
   localStorage.setItem(AUTH_EXPIRES, String(expiresAt));
+  console.log('[authService] Sesión guardada, expira en', SESSION_MS / 1000 / 60, 'minutos');
   return data;
 }
 
@@ -32,8 +42,11 @@ export function logout() {
 export function getCurrentUser() {
   try {
     if (!isAuthenticated()) return null;
-    return JSON.parse(localStorage.getItem(AUTH_USER) || "null");
+    const userStr = localStorage.getItem(AUTH_USER);
+    const user = JSON.parse(userStr || "null");
+    return user;
   } catch (e) {
+    console.error('[authService] Error en getCurrentUser:', e);
     return null;
   }
 }
@@ -44,14 +57,21 @@ export function getToken() {
 }
 
 export function isAuthenticated() {
-  const token = localStorage.getItem(AUTH_KEY);
   const expires = Number(localStorage.getItem(AUTH_EXPIRES) || "0");
-  if (!token) return false;
+  const user = localStorage.getItem(AUTH_USER);
+  
+  // Si no hay expiración o ya expiró
   if (!expires || Date.now() > expires) {
     // limpiar almacenamiento si venció
     logout();
     return false;
   }
+  
+  // Verificar que haya usuario (el token es opcional)
+  if (!user || user === 'null') {
+    return false;
+  }
+  
   return true;
 }
 
