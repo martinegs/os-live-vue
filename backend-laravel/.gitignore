@@ -1,8 +1,8 @@
 *.log
 .DS_Store
-.env
+# .env - COMENTADO PARA SUBIR AL REPO
 .env.backup
-.env.production
+# .env.production - COMENTADO PARA SUBIR AL REPO
 .phpactor.json
 .phpunit.result.cache
 /.fleet
