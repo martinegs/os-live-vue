@@ -27,6 +27,15 @@
         <button v-else type="button" class="orders-live__session-btn" @click="openLogin">
           Iniciar sesion
         </button>
+        <div class="orders-live__date-selector">
+          <label>Fecha:</label>
+          <input 
+            type="date" 
+            v-model="selectedDate"
+            @change="updateSimulatedDate"
+            class="orders-live__date-input"
+          />
+        </div>
       </div>
     </section>
 
@@ -70,7 +79,7 @@
           @load-more="loadMoreRows"
         />
       </div>
-      <KpiLugares class="orders-live__board-kpi" :rows="visibleRows" />
+      <KpiLugares class="orders-live__board-kpi" :rows="todaysRowsForCharts" />
     </section>
 
     <section class="orders-live__summary-cards">
@@ -94,6 +103,12 @@
       :format-currency="formatCurrency"
       :rows="visibleRows"
       :resumen-hoy="resumenHoy"
+    />
+
+    <!-- Estadísticas Financieras y Operativas -->
+    <StatsDashboard 
+      class="orders-live__stats"
+      :api-origin="apiOrigin"
     />
 
     <transition name="modal">
@@ -130,8 +145,32 @@ import FinancialCard from "./FinancialCard.vue";
 import KpiLugares from "./KpiLugares.vue";
 import LoginModal from "./LoginModal.vue";
 import ChatWidget from "./ChatWidget.vue";
+import StatsDashboard from "./StatsDashboard.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 import { getSessionRemainingMs, isAuthenticated, logout } from "../services/authService";
+import { setSimulatedDate, clearSimulatedDate, getSimulatedDate, useDateTime } from "../composables/useDateTime";
+
+const { getCurrentDate } = useDateTime();
+
+// Inicializar con la fecha simulada si existe, o fecha de hoy
+const storedDate = getSimulatedDate();
+const selectedDate = ref(
+  storedDate 
+    ? storedDate.slice(0, 10) 
+    : getCurrentDate().toISOString().slice(0, 10)
+);
+
+function updateSimulatedDate() {
+  if (selectedDate.value) {
+    const today = getCurrentDate().toISOString().slice(0, 10);
+    if (selectedDate.value === today) {
+      clearSimulatedDate();
+    } else {
+      setSimulatedDate(`${selectedDate.value}T10:00:00`);
+    }
+    window.location.reload();
+  }
+}
 
 const isBrowser = typeof window !== "undefined";
 const isDev = isBrowser && window.location.hostname === "localhost";
@@ -147,6 +186,7 @@ const {
   resumenPagos,
   resumenHoy,
   visibleRows,
+  todaysRowsForCharts,
   stats,
   statsToday,
   estadoChartDataToday,
@@ -472,6 +512,39 @@ defineExpose({ openLogin });
   font-weight: 600;
   padding: 10px 18px;
   cursor: pointer;
+}
+
+.orders-live__date-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orders-live__date-selector label {
+  font-size: 0.875rem;
+  color: var(--dt-color-text-secondary);
+  font-weight: 500;
+}
+
+.orders-live__date-input {
+  padding: 8px 12px;
+  border-radius: var(--dt-radius-sm);
+  border: 1px solid var(--dt-color-border);
+  background: var(--dt-color-surface);
+  color: var(--dt-color-text);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.orders-live__date-input:focus {
+  outline: none;
+  border-color: var(--dt-color-accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.orders-live__date-input:hover {
+  border-color: var(--dt-color-accent);
 }
 
 @media (max-width: 1024px) {

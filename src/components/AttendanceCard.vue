@@ -59,6 +59,9 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { useDateTime } from "@/composables/useDateTime";
+
+const { getCurrentDate } = useDateTime();
 
 const props = defineProps({
   apiOrigin: {
@@ -94,7 +97,8 @@ async function fetchAttendance() {
 
   try {
     const origin = (props.apiOrigin || "").replace(/\/$/, "");
-    const url = `${origin}/api/attendance/daily`;
+    const dateStr = getCurrentDate().toISOString().slice(0, 10);
+    const url = `${origin}/api/attendance/daily?date=${encodeURIComponent(dateStr)}`;
 
     const response = await fetch(url, { credentials: "omit" });
     if (!response.ok) {

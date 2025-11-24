@@ -250,11 +250,34 @@ class ChatController extends Controller
     public function getUnreadCount(Request $request)
     {
         $userId = $request->input('userId');
+        $since = $request->input('since', 0); // Timestamp en milisegundos
         
-        $count = ChatMessage::where('receiver_id', $userId)
-            ->whereNull('read_at')
-            ->count();
+        $query = DB::table('chat_messages')
+            ->select([
+                'chat_messages.id',
+                'chat_messages.sender_id',
+                'chat_messages.receiver_id',
+                'chat_messages.message',
+                'chat_messages.created_at',
+                'usuarios.nome as sender_name'
+            ])
+            ->join('usuarios', 'chat_messages.sender_id', '=', 'usuarios.idUsuarios')
+            ->where('chat_messages.receiver_id', $userId)
+            ->whereNull('chat_messages.read_at');
         
-        return response()->json(['unread_count' => $count]);
+        // Si hay un timestamp, solo traer mensajes posteriores
+        if ($since > 0) {
+            $sinceDate = date('Y-m-d H:i:s', $since / 1000);
+            $query->where('chat_messages.created_at', '>', $sinceDate);
+        }
+        
+        $messages = $query->orderBy('chat_messages.id', 'desc')
+            ->limit(50)
+            ->get();
+        
+        return response()->json([
+            'unread_count' => $messages->count(),
+            'messages' => $messages
+        ]);
     }
 }

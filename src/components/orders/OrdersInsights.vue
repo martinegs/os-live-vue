@@ -122,6 +122,9 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useDateTime } from '@/composables/useDateTime';
+
+const { getCurrentDate } = useDateTime();
 
 const props = defineProps({
   stats: {
@@ -184,7 +187,7 @@ function formatNumber(value) {
 }
 
 const todaysRows = computed(() => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getCurrentDate().toISOString().slice(0, 10);
   return (props.rows || []).filter((row) => {
     const rawDate = row.fechaIngreso ?? row.ts ?? null;
     if (!rawDate) return false;
@@ -249,7 +252,7 @@ async function fetchPayTotalForDate(dateStr) {
 }
 
 onMounted(async () => {
-  const now = new Date();
+  const now = getCurrentDate();
   const dateOffsets = [3, 2, 1, 0];
   const dateStrings = dateOffsets.map((offset) =>
     formatLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)),

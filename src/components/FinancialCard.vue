@@ -87,24 +87,35 @@ const paymentMethodCards = computed(() => {
 
 const typeCards = computed(() => {
   const types = props.summary?.byType ?? {};
+  
+  // Buscar keys case-insensitive
+  const findType = (name) => {
+    const key = Object.keys(types).find(k => k.toLowerCase() === name.toLowerCase());
+    return key ? types[key] : null;
+  };
+  
+  const venta = findType('Venta');
+  const adelanto = findType('Adelanto');
+  const gasto = findType('Gasto');
+  
   return [
     {
       key: "venta",
       label: "Ventas",
-      amount: Number(types.venta?.total ?? 0),
-      hint: `${Number(types.venta?.cantidad ?? 0)} operaciones`,
+      amount: Number(venta?.total ?? 0),
+      hint: `${Number(venta?.cantidad ?? 0)} operaciones`,
     },
     {
       key: "adelanto",
       label: "Adelantos",
-      amount: Number(types.adelanto?.total ?? 0),
-      hint: `${Number(types.adelanto?.cantidad ?? 0)} operaciones`,
+      amount: Number(adelanto?.total ?? 0),
+      hint: `${Number(adelanto?.cantidad ?? 0)} operaciones`,
     },
     {
       key: "gasto",
       label: "Gastos",
-      amount: Number(types.gasto?.total ?? 0),
-      hint: `${Number(types.gasto?.cantidad ?? 0)} operaciones`,
+      amount: Number(gasto?.total ?? 0),
+      hint: `${Number(gasto?.cantidad ?? 0)} operaciones`,
     },
   ];
 });

@@ -545,6 +545,27 @@ async function sendMessage() {
   if (!messageInput.value.trim() || sending.value || !currentConversation.value) return;
   
   const messageText = messageInput.value.trim();
+  const tempId = Date.now(); // ID temporal
+  
+  // Crear mensaje optimista ANTES de enviar
+  const optimisticMessage = {
+    id: tempId,
+    sender_id: currentUserId.value,
+    receiver_id: currentConversation.value.user_id,
+    message: messageText,
+    created_at: new Date().toISOString(),
+    read_at: null,
+    sender_name: currentUser.value?.nome || 'Tú',
+    sender_avatar: currentUser.value?.foto || null,
+    _pending: true // Marcador temporal
+  };
+  
+  // Agregar inmediatamente a la UI
+  messages.value = [...messages.value, optimisticMessage];
+  messageInput.value = '';
+  await nextTick();
+  scrollToBottom();
+  
   sending.value = true;
   
   try {
@@ -563,18 +584,18 @@ async function sendMessage() {
     
     const data = await response.json();
     
-    // Agregar el mensaje inmediatamente a la UI
+    // Reemplazar mensaje optimista con el real
     if (data.message) {
-      messages.value = [...messages.value, data.message];
-      await nextTick();
-      scrollToBottom();
+      messages.value = messages.value.map(msg => 
+        msg.id === tempId ? data.message : msg
+      );
     }
-    
-    // Limpiar el input
-    messageInput.value = '';
   } catch (error) {
     console.error('Error enviando mensaje:', error);
-    // El mensaje permanece en el input si hay error
+    // Eliminar mensaje optimista si falló
+    messages.value = messages.value.filter(msg => msg.id !== tempId);
+    // Restaurar el texto
+    messageInput.value = messageText;
   } finally {
     sending.value = false;
   }
@@ -643,16 +664,16 @@ function connectRealtime() {
     clearInterval(pollingInterval);
   }
   
-  // Polling cada 3 segundos
+  // Polling cada 5 segundos (aumentado para reducir carga)
   pollingInterval = setInterval(async () => {
-    // Solo si hay una conversación activa y el chat está abierto
-    if (!currentConversation.value || !isOpen.value) return;
+    // Solo si hay una conversación activa, el chat está abierto y NO está enviando
+    if (!currentConversation.value || !isOpen.value || sending.value) return;
     
     isPolling.value = true;
     
     const otherUserId = currentConversation.value.user_id;
     const lastMessageId = messages.value.length > 0 
-      ? Math.max(...messages.value.map(m => m.id))
+      ? Math.max(...messages.value.filter(m => !m._pending).map(m => m.id))
       : 0;
     
     try {
@@ -667,7 +688,7 @@ function connectRealtime() {
           console.log('[ChatWidget] Nuevos mensajes:', data.messages.length);
           
           // Evitar duplicados - solo agregar mensajes que no existen
-          const existingIds = new Set(messages.value.map(m => m.id));
+          const existingIds = new Set(messages.value.filter(m => !m._pending).map(m => m.id));
           const newMessages = data.messages.filter(m => !existingIds.has(m.id));
           
           if (newMessages.length > 0) {
@@ -686,7 +707,7 @@ function connectRealtime() {
         isPolling.value = false;
       }, 500);
     }
-  }, 3000);
+  }, 5000); // Cambiado de 3s a 5s
 }
 
 function disconnectRealtime() {

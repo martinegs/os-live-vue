@@ -1,4 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { useDateTime } from '../useDateTime';
+
+const { getCurrentDate } = useDateTime();
 
 const DEFAULT_CHUNK_SIZE = 30;
 
@@ -42,7 +45,7 @@ function coalesceNumber(...values) {
 }
 
 function createBaseForm() {
-  const now = new Date();
+  const now = getCurrentDate();
   const iso = now.toISOString();
   return {
     id: null,
@@ -344,8 +347,9 @@ export function useOrdersLive(options = {}) {
       setEstadoUi("cargando stream...", "(post API)");
       // Cargar resumen de pagos del día (hoy)
       try {
-        const hoy = new Date();
+        const hoy = getCurrentDate();
         const hoyStr = hoy.toISOString().slice(0, 10);
+        console.log('[OrdersLive] Cargando resumen de pagos para fecha:', hoyStr);
         await fetchPaymentsSummary(hoyStr);
       } catch (err) {
         console.warn('[OrdersLive] fallo cargar resumen pagos', err);
@@ -363,9 +367,11 @@ export function useOrdersLive(options = {}) {
       // paymentsUrl may be a full URL or a path
       const separator = paymentsUrl.includes('?') ? '&' : '?';
       const url = `${paymentsUrl}${separator}date=${encodeURIComponent(dateStr)}`;
+      console.log('[OrdersLive] Fetching payments from:', url);
       const res = await fetch(url, { credentials: 'omit' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
+      console.log('[OrdersLive] Payments response:', body);
       resumenPagos.value = body || resumenPagos.value;
       console.info('[OrdersLive] resumenPagos cargado', { date: dateStr, totalNeto: resumenPagos.value.totalNeto });
       return resumenPagos.value;
@@ -645,7 +651,7 @@ export function useOrdersLive(options = {}) {
   });
 
   const resumenHoy = computed(() => {
-    const hoy = new Date();
+    const hoy = getCurrentDate();
     const hoyStr = hoy.toISOString().slice(0, 10);
     let total = 0;
     let metros = 0;
@@ -668,7 +674,7 @@ export function useOrdersLive(options = {}) {
 
   // Filas de HOY para gráficos (usa fechaIngreso o ts, en horario local)
   const todaysRowsForCharts = computed(() => {
-    const hoy = new Date();
+    const hoy = getCurrentDate();
     const hoyLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
 
     const rows = filasOrdenadas.value;
@@ -984,6 +990,7 @@ export function useOrdersLive(options = {}) {
     q: query,
     resumenHoy,
     visibleRows,
+    todaysRowsForCharts,
     stats,
     estadoChartData,
     estadoPieSegments,

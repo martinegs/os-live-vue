@@ -155,4 +155,104 @@ class LancamentoController extends Controller
             return response()->json(['error' => 'Error al obtener resumen'], 500);
         }
     }
+
+    /**
+     * GET /api/lancamentos/realizadas?date=YYYY-MM-DD
+     * Ventas vs Gastos realizados (pagados)
+     */
+    public function realizadas(Request $request)
+    {
+        try {
+            $targetDate = $request->query('date', date('Y-m-d'));
+            
+            $result = DB::selectOne("
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo = 'Venta' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS total_receita,
+                    COALESCE(SUM(CASE WHEN tipo = 'Gasto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS total_despesa
+                FROM lancamentos
+                WHERE data_pagamento IS NOT NULL 
+                    AND data_pagamento <= ?
+            ", [$targetDate]);
+            
+            return response()->json([
+                'date' => $targetDate,
+                'ventas' => (float)$result->total_receita,
+                'gastos' => (float)$result->total_despesa,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[lancamentos] Error fetching realizadas', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Error al obtener datos'], 500);
+        }
+    }
+
+    /**
+     * GET /api/lancamentos/pendientes?date=YYYY-MM-DD
+     * Ventas vs Gastos pendientes (no pagados)
+     */
+    public function pendientes(Request $request)
+    {
+        try {
+            $targetDate = $request->query('date', date('Y-m-d'));
+            
+            $result = DB::selectOne("
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo = 'Venta' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS total_receita_pendente,
+                    COALESCE(SUM(CASE WHEN tipo = 'Gasto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS total_despesa_pendente
+                FROM lancamentos
+                WHERE (data_pagamento IS NULL OR data_pagamento > ?)
+            ", [$targetDate]);
+            
+            return response()->json([
+                'date' => $targetDate,
+                'ventas' => (float)$result->total_receita_pendente,
+                'gastos' => (float)$result->total_despesa_pendente,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[lancamentos] Error fetching pendientes', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Error al obtener datos'], 500);
+        }
+    }
+
+    /**
+     * GET /api/lancamentos/prevision?date=YYYY-MM-DD
+     * Total en caja previsto
+     */
+    public function prevision(Request $request)
+    {
+        try {
+            $targetDate = $request->query('date', date('Y-m-d'));
+            
+            // Realizadas hasta la fecha
+            $realizadas = DB::selectOne("
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo = 'Venta' OR tipo = 'Adelanto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS ingresos,
+                    COALESCE(SUM(CASE WHEN tipo = 'Gasto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS gastos
+                FROM lancamentos
+                WHERE data_pagamento IS NOT NULL 
+                    AND data_pagamento <= ?
+            ", [$targetDate]);
+            
+            // Pendientes después de la fecha
+            $pendientes = DB::selectOne("
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo = 'Venta' OR tipo = 'Adelanto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS ingresos,
+                    COALESCE(SUM(CASE WHEN tipo = 'Gasto' THEN CAST(REPLACE(valor, ',', '.') AS DECIMAL(15,2)) ELSE 0 END), 0) AS gastos
+                FROM lancamentos
+                WHERE (data_pagamento IS NULL OR data_pagamento > ?)
+            ", [$targetDate]);
+            
+            $saldoActual = (float)$realizadas->ingresos - (float)$realizadas->gastos;
+            $saldoFuturo = $saldoActual + (float)$pendientes->ingresos - (float)$pendientes->gastos;
+            
+            return response()->json([
+                'date' => $targetDate,
+                'enCajaAhora' => $saldoActual,
+                'aEntrar' => $saldoFuturo,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[lancamentos] Error fetching prevision', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Error al obtener datos'], 500);
+        }
+    }
 }
+

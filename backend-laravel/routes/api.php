@@ -10,6 +10,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\RealtimeController;
+use App\Http\Controllers\StatsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,14 @@ Route::prefix('payments')->group(function () {
 // Lançamentos
 Route::prefix('lancamentos')->group(function () {
     Route::get('/summary', [LancamentoController::class, 'summary']);
+    Route::get('/realizadas', [LancamentoController::class, 'realizadas']);
+    Route::get('/pendientes', [LancamentoController::class, 'pendientes']);
+    Route::get('/prevision', [LancamentoController::class, 'prevision']);
+});
+
+// Estadísticas
+Route::prefix('stats')->group(function () {
+    Route::get('/metros-por-usuario', [StatsController::class, 'metrosPorUsuario']);
 });
 
 // Asistencia

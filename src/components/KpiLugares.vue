@@ -31,24 +31,16 @@
 
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+
 const props = defineProps({
   rows: { type: Array, required: true }
 });
 
-function isToday(fecha) {
-  if (!fecha) return false;
-  const hoy = new Date();
-  const fechaObj = new Date(fecha);
-  return fechaObj.getFullYear() === hoy.getFullYear() &&
-    fechaObj.getMonth() === hoy.getMonth() &&
-    fechaObj.getDate() === hoy.getDate();
-}
-
 const mendozaCount = computed(() =>
-  props.rows.filter(row => row.lugares_id === 'LM' && isToday(row.fechaIngreso || row.ts)).length
+  props.rows.filter(row => row.lugares_id === 'LM').length
 );
 const capitalCount = computed(() =>
-  props.rows.filter(row => row.lugares_id === 'LC' && isToday(row.fechaIngreso || row.ts)).length
+  props.rows.filter(row => row.lugares_id === 'LC').length
 );
 
 const chartRef = ref(null);
@@ -114,6 +106,11 @@ function renderChart() {
   const cy = rect.height / 2;
   const radius = Math.min(cx, cy) - 8;
   const innerRadius = radius * 0.62;
+
+  // Si no hay datos, no dibujar
+  if (total === 0 || radius <= 0) {
+    return;
+  }
 
   // draw each segment with a radial gradient + subtle stroke
   data.forEach((value, i) => {
