@@ -23,7 +23,7 @@ class OrderController extends Controller
     
     /**
      * GET /api/orders
-     * Lista órdenes con límite opcional
+     * Lista órdenes con límite opcional y filtro de fecha
      */
     public function index(Request $request)
     {
@@ -31,7 +31,18 @@ class OrderController extends Controller
             $limit = $request->query('limit', 1000);
             $limit = is_numeric($limit) ? (int)$limit : 1000;
             
-            $orders = DB::table('os as os')
+            // Parámetros opcionales de fecha
+            $startDate = $request->query('start_date');
+            $endDate = $request->query('end_date');
+            
+            // Log para debug
+            Log::info('[orders] Request params', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'limit' => $limit
+            ]);
+            
+            $query = DB::table('os as os')
                 ->leftJoin('clientes as c', 'os.clientes_id', '=', 'c.idClientes')
                 ->leftJoin('usuarios as u', 'os.usuarios_id', '=', 'u.idUsuarios')
                 ->leftJoin('lugares_entrega as le', 'le.idLugar', '=', 'os.lugares_id')
@@ -63,10 +74,30 @@ class OrderController extends Controller
                     'os.pagadoAreaClientes as esAreaClientes',
                     'os.numeroOperacion',
                     DB::raw('CASE WHEN os.numeroOperacion IS NOT NULL AND os.numeroOperacion != "" THEN 1 ELSE 0 END as hayNOP')
-                ])
+                ]);
+            
+            // Aplicar filtro de fechas si se proporciona
+            if ($startDate) {
+                Log::info('[orders] Adding start_date filter', ['date' => $startDate]);
+                $query->where('os.dataInicial', '>=', $startDate);
+            }
+            if ($endDate) {
+                $endDateFull = $endDate . ' 23:59:59';
+                Log::info('[orders] Adding end_date filter', ['date' => $endDateFull]);
+                $query->where('os.dataInicial', '<=', $endDateFull);
+            }
+            
+            // Log SQL query before execution
+            $sql = $query->toSql();
+            $bindings = $query->getBindings();
+            Log::info('[orders] SQL Query', ['sql' => $sql, 'bindings' => $bindings]);
+            
+            $orders = $query
                 ->orderBy(DB::raw('COALESCE(os.dataFinal, os.dataInicial)'), 'desc')
                 ->limit($limit)
                 ->get();
+            
+            Log::info('[orders] Query results', ['count' => $orders->count()]);
             
             // Normalizar valores numéricos y booleanos
             $orders = $orders->map(function($order) {
@@ -87,6 +118,7 @@ class OrderController extends Controller
                     'usuario_id' => $order->usuario_id,
                     'usuario_nombre' => $order->usuario_nombre,
                     'es_rehacer' => (int)($order->es_rehacer ?? 0),
+                    'dataInicial' => $order->fechaIngreso,
                     'fechaIngreso' => $order->fechaIngreso,
                     'fechaEntrega' => $order->fechaEntrega,
                     'lugarEntrega' => $order->lugarEntrega,

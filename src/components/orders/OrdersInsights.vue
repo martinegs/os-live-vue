@@ -10,8 +10,8 @@
       <section class="orders-insights__chart">
         <header class="orders-insights__chart-header">
           <div>
-            <h3>Distribucion por estado</h3>
-            <p>Detalle de ordenes activas hoy</p>
+            <h3>Distribución por estado</h3>
+            <p>Detalle de ordenes activas {{ dateLabel }}</p>
           </div>
           <span class="orders-insights__tag">{{ statesActive }} estados</span>
         </header>
@@ -161,10 +161,19 @@ const props = defineProps({
     type: Array,
     required: true,
   },
-  resumenHoy: {
-    type: Object,
-    default: () => ({ total: 0, metros: 0 }),
+  selectedDate: {
+    type: String,
+    default: '',
   },
+});
+
+const dateLabel = computed(() => {
+  if (!props.selectedDate) return 'hoy';
+  const date = new Date(props.selectedDate + 'T12:00:00');
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  if (isToday) return 'hoy';
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 });
 
 // Debug: ver qué datos llegan

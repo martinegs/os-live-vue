@@ -341,40 +341,30 @@ function getInitials(name) {
   position: absolute;
   inset: -50px;
   background: 
-    radial-gradient(2px 2px at 20% 30%, white, transparent),
-    radial-gradient(2px 2px at 60% 70%, white, transparent),
-    radial-gradient(1px 1px at 50% 50%, white, transparent),
-    radial-gradient(1px 1px at 80% 10%, white, transparent),
-    radial-gradient(2px 2px at 90% 60%, white, transparent),
-    radial-gradient(1px 1px at 33% 80%, white, transparent),
-    radial-gradient(1px 1px at 15% 70%, white, transparent);
+    radial-gradient(1px 1px at 20% 30%, white, transparent),
+    radial-gradient(1px 1px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent);
   background-size: 200% 200%;
   background-position: 0% 0%;
-  animation: shooting-stars 3s linear infinite;
-  opacity: 0.6;
+  animation: shooting-stars 6s linear infinite;
+  opacity: 0.5;
   pointer-events: none;
   z-index: -1;
+  will-change: background-position;
 }
 
 @keyframes shooting-stars {
   0% {
     background-position: 0% 0%;
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.6;
   }
   100% {
     background-position: -200% -200%;
-    opacity: 0.3;
   }
 }
 
 .chat-manager__trigger:hover {
-  transform: scale(1.1);
-  box-shadow: 
-    0 0 30px rgba(255, 20, 147, 0.7),
-    0 6px 16px rgba(0, 0, 0, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 20, 147, 0.6);
 }
 
 .chat-manager__trigger--unread {
@@ -383,9 +373,7 @@ function getInitials(name) {
 
 @keyframes pulse-neon {
   0%, 100% { 
-    box-shadow: 
-      0 0 20px rgba(255, 20, 147, 0.5),
-      0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 20, 147, 0.4);
   }
   50% { 
     box-shadow: 

@@ -3,7 +3,7 @@
     <div class="kpi-header">
       <div>
         <span class="insight-label">Órdenes por Sucursal</span>
-        <p class="insight-subtitle">Distribución geográfica hoy</p>
+        <p class="insight-subtitle">Distribución geográfica {{ dateLabel }}</p>
       </div>
       <span class="insight-badge">{{ totalCount }} total</span>
     </div>
@@ -43,7 +43,17 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps({
-  rows: { type: Array, required: true }
+  rows: { type: Array, required: true },
+  selectedDate: { type: String, default: '' }
+});
+
+const dateLabel = computed(() => {
+  if (!props.selectedDate) return 'hoy';
+  const date = new Date(props.selectedDate + 'T12:00:00');
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  if (isToday) return 'hoy';
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 });
 
 const mendozaCount = computed(() =>

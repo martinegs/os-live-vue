@@ -331,18 +331,41 @@ export function useOrdersLive(options = {}) {
   async function cargarAPI() {
     console.info("[OrdersLive] Iniciando carga inicial", { apiUrl });
     try {
-      const res = await fetch(apiUrl, { credentials: "omit" });
+      // Calcular la fecha exacta seleccionada
+      const fechaActual = getCurrentDate();
+      const fechaStr = fechaActual.getFullYear() + '-' + 
+                       String(fechaActual.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(fechaActual.getDate()).padStart(2, '0');
+      
+      // Construir URL con parámetros de fecha (mismo día para inicio y fin)
+      // Si apiUrl es relativo, usar window.location.origin como base
+      const baseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
+      const url = new URL(baseUrl);
+      url.searchParams.set('start_date', fechaStr);
+      url.searchParams.set('end_date', fechaStr);
+      
+      console.info("[OrdersLive] Cargando órdenes del día:", { 
+        fecha: fechaStr,
+        fechaActual: fechaActual.toISOString(),
+        url: url.toString() 
+      });
+      
+      const res = await fetch(url.toString(), { credentials: "omit" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const rows = Array.isArray(data) ? data : (Array.isArray(data?.rows) ? data.rows : []);
-      if (!rows.length) throw new Error("sin filas");
-
+      
       rowsMap.clear();
-      for (const raw of rows) {
-        const parsed = fromAPI(raw);
-        if (Number.isFinite(parsed.id)) upsertRow(rowsMap, parsed);
+      if (rows.length > 0) {
+        for (const raw of rows) {
+          const parsed = fromAPI(raw);
+          if (Number.isFinite(parsed.id)) upsertRow(rowsMap, parsed);
+        }
+        console.info("[OrdersLive] API cargada", { rows: rows.length });
+      } else {
+        console.warn("[OrdersLive] No hay órdenes en el rango seleccionado:", { startDate, endDate });
       }
-      console.info("[OrdersLive] API cargada", { rows: rows.length });
+      
       setApiStatus("conectado", "(respuesta inicial)");
       setEstadoUi("cargando stream...", "(post API)");
       // Cargar resumen de pagos del día (hoy)
@@ -672,7 +695,7 @@ export function useOrdersLive(options = {}) {
     return { total, metros };
   });
 
-  // Filas de HOY para gráficos (usa fechaIngreso o ts, en horario local)
+  // Filas del día seleccionado para gráficos (usa fechaIngreso o ts, en horario local)
   const todaysRowsForCharts = computed(() => {
     const hoy = getCurrentDate();
     const hoyLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
@@ -681,18 +704,35 @@ export function useOrdersLive(options = {}) {
     const out = [];
     const debugFechas = [];
     for (const row of rows) {
-      const fecha = row.dataInicial ?? row.fechaIngreso ?? null;
-      if (!fecha) continue;
-      // Convertir dataInicial a fecha local y comparar solo YYYY-MM-DD
-      const d = new Date(fecha);
-      if (Number.isNaN(d.getTime())) continue;
-      const fechaLocal = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      debugFechas.push({ raw: fecha, fechaLocal });
+      // Priorizar dataInicial, pero también intentar con fechaIngreso y ts
+      const fecha = row.dataInicial ?? row.fechaIngreso ?? row.ts ?? null;
+      if (!fecha) {
+        console.warn('[DEBUG] Orden sin fecha:', row.id, row);
+        continue;
+      }
+      
+      // Extraer solo YYYY-MM-DD sin conversión de zona horaria
+      let fechaLocal;
+      if (typeof fecha === 'string' && fecha.match(/^\d{4}-\d{2}-\d{2}/)) {
+        // Si la fecha es string en formato YYYY-MM-DD, usar directamente los primeros 10 caracteres
+        fechaLocal = fecha.substring(0, 10);
+      } else {
+        // Si no, intentar parsear como Date
+        const d = new Date(fecha);
+        if (Number.isNaN(d.getTime())) {
+          console.warn('[DEBUG] Fecha inválida:', fecha, 'en orden', row.id);
+          continue;
+        }
+        // Usar getFullYear, getMonth, getDate en lugar de toISOString para evitar problemas de zona horaria
+        fechaLocal = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      }
+      
+      debugFechas.push({ id: row.id, raw: fecha, fechaLocal, match: fechaLocal === hoyLocal });
       if (fechaLocal === hoyLocal) out.push(row);
     }
     console.log('[DEBUG] hoyLocal:', hoyLocal);
-    console.log('[DEBUG] dataInicial de todas las filas (primeros 5):', debugFechas.slice(0, 5));
-    console.log('[DEBUG] Filas encontradas para hoy:', out.length, out.map(r => r.status));
+    console.log('[DEBUG] dataInicial de todas las filas (primeros 10):', debugFechas.slice(0, 10));
+    console.log('[DEBUG] Filas encontradas para hoy:', out.length, out.slice(0, 5).map(r => ({ id: r.id, status: r.status, lugares_id: r.lugares_id })));
     return out;
   });
 

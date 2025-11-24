@@ -79,7 +79,11 @@
           @load-more="loadMoreRows"
         />
       </div>
-      <KpiLugares class="orders-live__board-kpi" :rows="todaysRowsForCharts" />
+      <KpiLugares 
+        class="orders-live__board-kpi" 
+        :rows="todaysRowsForCharts"
+        :selected-date="selectedDate"
+      />
     </section>
 
     <section class="orders-live__summary-cards">
@@ -102,6 +106,7 @@
       :clase-chart-data="claseChartDataToday"
       :format-currency="formatCurrency"
       :rows="visibleRows"
+      :selected-date="selectedDate"
       :resumen-hoy="resumenHoy"
     />
 
@@ -109,6 +114,7 @@
     <StatsDashboard 
       class="orders-live__stats"
       :api-origin="apiOrigin"
+      :selected-date="selectedDate"
     />
 
     <transition name="modal">
