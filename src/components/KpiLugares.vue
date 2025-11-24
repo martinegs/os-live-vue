@@ -1,7 +1,11 @@
 <template>
   <div class="insight-card kpi-lugares-card kpi-lugares-big dt-card dt-card--glow">
     <div class="kpi-header">
-      <span class="insight-label">Órdenes por Sucursal</span>
+      <div>
+        <span class="insight-label">Órdenes por Sucursal</span>
+        <p class="insight-subtitle">Distribución geográfica hoy</p>
+      </div>
+      <span class="insight-badge">{{ totalCount }} total</span>
     </div>
 
     <div class="kpi-body">
@@ -9,20 +13,26 @@
         <canvas ref="chartRef" class="chart-canvas" aria-hidden="true"></canvas>
         <div class="chart-center">
           <div class="center-value">{{ totalCount }}</div>
-          <div class="center-sub">hoy</div>
+          <div class="center-sub">ordenes</div>
         </div>
       </div>
 
       <ul class="kpi-legend">
         <li class="kpi-legend-item">
           <span class="dot mendoza" aria-hidden="true"></span>
-          <span class="legend-label">Mendoza</span>
-          <span class="legend-value">{{ mendozaCount }}</span>
+          <div class="legend-content">
+            <span class="legend-label">Mendoza</span>
+            <span class="legend-value">{{ mendozaCount }}</span>
+            <span class="legend-percent">{{ getMendozaPercent() }}%</span>
+          </div>
         </li>
         <li class="kpi-legend-item">
           <span class="dot capital" aria-hidden="true"></span>
-          <span class="legend-label">Capital Federal</span>
-          <span class="legend-value">{{ capitalCount }}</span>
+          <div class="legend-content">
+            <span class="legend-label">Capital Federal</span>
+            <span class="legend-value">{{ capitalCount }}</span>
+            <span class="legend-percent">{{ getCapitalPercent() }}%</span>
+          </div>
         </li>
       </ul>
     </div>
@@ -45,6 +55,16 @@ const capitalCount = computed(() =>
 
 const chartRef = ref(null);
 const totalCount = computed(() => mendozaCount.value + capitalCount.value);
+
+function getMendozaPercent() {
+  if (totalCount.value === 0) return 0;
+  return Math.round((mendozaCount.value / totalCount.value) * 100);
+}
+
+function getCapitalPercent() {
+  if (totalCount.value === 0) return 0;
+  return Math.round((capitalCount.value / totalCount.value) * 100);
+}
 
 function getData() {
   return {
@@ -101,7 +121,7 @@ function renderChart() {
   const { data } = getData();
   const total = data.reduce((a, b) => a + b, 0) || 1;
   let startAngle = -0.5 * Math.PI; // start at top
-  const baseColors = [getCssColor('var(--mendoza)') || '#38bdf8', getCssColor('var(--capital)') || '#fbbf24'];
+  const baseColors = ['#FF1493', '#00FFFF']; // Rosa neón y Cyan
   const cx = rect.width / 2;
   const cy = rect.height / 2;
   const radius = Math.min(cx, cy) - 8;
@@ -129,8 +149,8 @@ function renderChart() {
 
     // shadow/glow
   ctx.save();
-  ctx.shadowColor = hexToRgba(color, 0.14);
-  ctx.shadowBlur = 8;
+  ctx.shadowColor = hexToRgba(color, 0.6);
+  ctx.shadowBlur = 20;
     ctx.fillStyle = grad;
     ctx.fill();
     ctx.restore();
@@ -189,19 +209,59 @@ function lighten(hex, amount = 0.1) {
 <style scoped>
 .kpi-lugares-card {
   padding: var(--dt-gap-md);
+  background: transparent !important;
+  border: 1px solid rgba(255, 20, 147, 0.15) !important;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.08) !important;
 }
 
 .kpi-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.insight-label {
+  font-size: var(--dt-font-size-lg);
+  font-weight: 600;
+  color: var(--dt-color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.4);
+}
+
+.insight-subtitle {
+  margin: 4px 0 0;
+  font-size: var(--dt-font-size-xs);
+  color: var(--dt-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.insight-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 20, 147, 0.15);
+  border: 1px solid rgba(255, 20, 147, 0.35);
+  color: #FF1493;
+  font-size: var(--dt-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(255, 20, 147, 0.5);
+  box-shadow: 0 0 12px rgba(255, 20, 147, 0.2);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 20, 147, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(255, 20, 147, 0.4); }
 }
 
 .kpi-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
   align-items: center;
 }
 
@@ -209,18 +269,19 @@ function lighten(hex, amount = 0.1) {
   position: relative;
   width: 100%;
   max-width: 520px;
-  height: 160px;
+  height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 0 25px rgba(255, 20, 147, 0.3));
 }
 
 .chart-canvas {
   width: 100%;
   height: 100%;
   border-radius: 12px;
-  background: var(--card-bg);
-  box-shadow: inset 0 2px 10px rgba(2,6,23,0.6);
+  background: rgba(10, 10, 20, 0.6);
+  box-shadow: inset 0 2px 15px rgba(255, 20, 147, 0.1);
 }
 
 .chart-center {
@@ -233,16 +294,34 @@ function lighten(hex, amount = 0.1) {
 }
 
 .center-value {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #FF1493;
+  text-shadow: 
+    0 0 15px rgba(255, 20, 147, 0.8),
+    0 0 30px rgba(255, 20, 147, 0.5);
+  animation: glow-value 3s ease-in-out infinite;
+}
+
+@keyframes glow-value {
+  0%, 100% { 
+    text-shadow: 
+      0 0 15px rgba(255, 20, 147, 0.8),
+      0 0 30px rgba(255, 20, 147, 0.5);
+  }
+  50% { 
+    text-shadow: 
+      0 0 25px rgba(255, 20, 147, 1),
+      0 0 50px rgba(255, 20, 147, 0.7);
+  }
 }
 
 .center-sub {
-  font-size: 12px;
-  color: rgba(226,232,240,0.6);
+  font-size: 11px;
+  color: rgba(255, 20, 147, 0.7);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
+  margin-top: 4px;
 }
 
 .kpi-legend {
@@ -250,52 +329,94 @@ function lighten(hex, amount = 0.1) {
   padding: 0;
   margin: 0;
   display: flex;
-  gap: 24px;
-  align-items: center;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
 }
 
 .kpi-legend-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #e2e8f0;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(15, 10, 20, 0.5);
+  border-radius: var(--dt-radius-md);
+  border: 1px solid rgba(255, 20, 147, 0.2);
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.08);
+  transition: all 0.3s ease;
+}
+
+.kpi-legend-item:hover {
+  border-color: rgba(255, 20, 147, 0.4);
+  box-shadow: 0 0 20px rgba(255, 20, 147, 0.15);
+  transform: translateX(4px);
 }
 
 .kpi-legend .dot {
   display: inline-block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  border: 2px solid rgba(11,16,32,0.6);
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .kpi-legend .dot.mendoza {
-  background: #38bdf8;
-  box-shadow: 0 6px 12px rgba(56,189,248,0.12);
-  border-color: rgba(11,16,32,0.5);
+  background: #FF1493;
+  box-shadow: 
+    0 0 12px rgba(255, 20, 147, 0.6),
+    0 0 25px rgba(255, 20, 147, 0.3);
 }
 
 .kpi-legend .dot.capital {
-  background: #fbbf24;
-  box-shadow: 0 6px 12px rgba(251,191,36,0.12);
-  border-color: rgba(11,16,32,0.5);
+  background: #00FFFF;
+  box-shadow: 
+    0 0 12px rgba(0, 255, 255, 0.6),
+    0 0 25px rgba(0, 255, 255, 0.3);
 }
 
-.kpi-legend-item { gap: 12px; }
+.legend-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
 
 .legend-label {
   font-size: 13px;
-  color: rgba(226,232,240,0.85);
+  color: var(--dt-color-text-primary);
+  font-weight: 500;
+  flex: 1;
 }
 
 .legend-value {
   font-weight: 700;
-  color: #ffffff;
-  margin-left: 6px;
+  color: #FF1493;
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(255, 20, 147, 0.5);
+}
+
+.legend-percent {
+  font-size: 12px;
+  color: var(--dt-color-text-muted);
+  font-weight: 600;
+  padding: 4px 8px;
+  background: rgba(255, 20, 147, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 20, 147, 0.2);
 }
 
 @media (max-width: 720px) {
-  .chart-wrap { height: 120px; }
-  .center-value { font-size: 18px; }
+  .chart-wrap { height: 150px; }
+  .center-value { font-size: 24px; }
+  .kpi-legend { gap: 12px; }
+  .kpi-header { flex-direction: column; gap: 12px; }
 }
 </style>

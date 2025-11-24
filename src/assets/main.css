@@ -6,6 +6,55 @@
   margin: 0;
   padding: 0;
   color: var(--dt-color-text-primary);
+  position: relative;
+  overflow-x: hidden;
+}
+
+#app::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(1px 1px at 10% 20%, white, transparent),
+    radial-gradient(1px 1px at 90% 80%, white, transparent),
+    radial-gradient(2px 2px at 30% 50%, white, transparent),
+    radial-gradient(1px 1px at 70% 10%, white, transparent),
+    radial-gradient(1px 1px at 20% 90%, white, transparent),
+    radial-gradient(2px 2px at 85% 40%, white, transparent),
+    radial-gradient(1px 1px at 50% 70%, white, transparent),
+    radial-gradient(1px 1px at 40% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 85%, white, transparent),
+    radial-gradient(1px 1px at 15% 60%, white, transparent),
+    radial-gradient(1px 1px at 95% 25%, white, transparent),
+    radial-gradient(2px 2px at 25% 15%, white, transparent);
+  background-size: 200% 200%;
+  background-position: 0% 0%;
+  animation: global-shooting-stars 8s linear infinite;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes global-shooting-stars {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    background-position: -200% -200%;
+    opacity: 0.2;
+  }
+}
+
+#app > * {
+  position: relative;
+  z-index: 1;
 }
 
 a {

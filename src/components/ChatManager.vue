@@ -306,36 +306,99 @@ function getInitials(name) {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, rgba(255, 20, 147, 0.6), rgba(255, 20, 147, 0.8));
   border: none;
+  outline: none;
   color: white;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 0 20px rgba(255, 20, 147, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
   z-index: 10000;
+  overflow: visible;
+}
+
+.chat-manager__trigger:focus {
+  outline: none;
+}
+
+.chat-manager__trigger:active {
+  outline: none;
+}
+
+.chat-manager__trigger svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 20, 147, 0.3));
+}
+
+.chat-manager__trigger::before {
+  content: '';
+  position: absolute;
+  inset: -50px;
+  background: 
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(2px 2px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent),
+    radial-gradient(1px 1px at 15% 70%, white, transparent);
+  background-size: 200% 200%;
+  background-position: 0% 0%;
+  animation: shooting-stars 3s linear infinite;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes shooting-stars {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    background-position: -200% -200%;
+    opacity: 0.3;
+  }
 }
 
 .chat-manager__trigger:hover {
   transform: scale(1.1);
+  box-shadow: 
+    0 0 30px rgba(255, 20, 147, 0.7),
+    0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .chat-manager__trigger--unread {
-  animation: pulse 2s infinite;
+  animation: pulse-neon 2s infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-  50% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6); }
+@keyframes pulse-neon {
+  0%, 100% { 
+    box-shadow: 
+      0 0 20px rgba(255, 20, 147, 0.5),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% { 
+    box-shadow: 
+      0 0 40px rgba(255, 20, 147, 0.8),
+      0 6px 20px rgba(255, 20, 147, 0.4);
+  }
 }
 
 .chat-manager__badge {
   position: absolute;
   top: -5px;
   right: -5px;
-  background: #ef4444;
+  background: linear-gradient(135deg, #FF1493, #FF69B4);
   color: white;
   border-radius: 12px;
   padding: 2px 6px;
@@ -343,6 +406,8 @@ function getInitials(name) {
   font-weight: 600;
   min-width: 20px;
   text-align: center;
+  border: none;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.5);
 }
 
 .chat-manager__user-list {
@@ -351,9 +416,12 @@ function getInitials(name) {
   right: 20px;
   width: 360px;
   max-height: 480px;
-  background: white;
-  border-radius: 8px 8px 0 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: rgba(15, 10, 20, 0.95);
+  border: 1px solid rgba(255, 20, 147, 0.4);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 
+    0 0 30px rgba(255, 20, 147, 0.3),
+    0 4px 20px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   z-index: 10001;
@@ -361,9 +429,10 @@ function getInitials(name) {
 
 .chat-manager__list-header {
   padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 8px 8px 0 0;
+  background: linear-gradient(135deg, rgba(255, 20, 147, 0.3), rgba(255, 20, 147, 0.2));
+  border-bottom: 1px solid rgba(255, 20, 147, 0.3);
+  color: #FF1493;
+  border-radius: 12px 12px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -373,44 +442,57 @@ function getInitials(name) {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.5);
 }
 
 .chat-manager__close {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
+  background: rgba(255, 20, 147, 0.2);
+  border: 1px solid rgba(255, 20, 147, 0.3);
   font-size: 20px;
-  color: white;
+  color: #FF1493;
   cursor: pointer;
   width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
 .chat-manager__close:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 20, 147, 0.3);
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.4);
+  transform: rotate(90deg);
 }
 
 .chat-manager__search {
   padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  border-bottom: 1px solid rgba(255, 20, 147, 0.2);
+  background: rgba(10, 10, 20, 0.5);
 }
 
 .chat-manager__search-input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid rgba(255, 20, 147, 0.3);
   border-radius: 20px;
   font-size: 14px;
+  background: rgba(10, 10, 20, 0.8);
+  color: #e8edff;
+  transition: all 0.2s ease;
+}
+
+.chat-manager__search-input::placeholder {
+  color: rgba(255, 20, 147, 0.5);
 }
 
 .chat-manager__search-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: rgba(255, 20, 147, 0.6);
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.3);
 }
 
 .chat-manager__users {
@@ -419,34 +501,56 @@ function getInitials(name) {
   max-height: 360px;
 }
 
+.chat-manager__users::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-manager__users::-webkit-scrollbar-track {
+  background: rgba(10, 10, 20, 0.5);
+}
+
+.chat-manager__users::-webkit-scrollbar-thumb {
+  background: rgba(255, 20, 147, 0.4);
+  border-radius: 4px;
+}
+
+.chat-manager__users::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 20, 147, 0.6);
+}
+
 .chat-manager__user-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 20, 147, 0.1);
 }
 
 .chat-manager__user-item:hover {
-  background: #f9fafb;
+  background: rgba(255, 20, 147, 0.1);
+  transform: translateX(4px);
 }
 
 .chat-manager__user-item--unread {
-  background: #eff6ff;
+  background: rgba(255, 20, 147, 0.12);
+  border-left: 3px solid rgba(255, 20, 147, 0.6);
 }
 
 .chat-manager__user-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, rgba(255, 20, 147, 0.4), rgba(255, 20, 147, 0.6));
+  border: none;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.3);
 }
 
 .chat-manager__user-info {
@@ -456,11 +560,11 @@ function getInitials(name) {
 .chat-manager__user-name {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: #e8edff;
 }
 
 .chat-manager__user-badge {
-  background: #667eea;
+  background: linear-gradient(135deg, #FF1493, #FF69B4);
   color: white;
   border-radius: 10px;
   padding: 2px 8px;
@@ -468,6 +572,8 @@ function getInitials(name) {
   font-weight: 600;
   min-width: 20px;
   text-align: center;
+  border: none;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.4);
 }
 
 .chat-manager__windows {
@@ -485,9 +591,12 @@ function getInitials(name) {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: rgba(15, 10, 20, 0.95);
+  border: 1px solid rgba(255, 20, 147, 0.4);
+  border-radius: 12px;
+  box-shadow: 
+    0 0 20px rgba(255, 20, 147, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.3);
   padding: 12px 16px;
   min-width: 300px;
   max-width: 400px;
@@ -516,7 +625,8 @@ function getInitials(name) {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, rgba(255, 20, 147, 0.4), rgba(255, 20, 147, 0.6));
+  border: none;
   color: white;
   display: flex;
   align-items: center;
@@ -524,6 +634,7 @@ function getInitials(name) {
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.3);
 }
 
 .chat-manager__toast-info {
@@ -534,13 +645,14 @@ function getInitials(name) {
 .chat-manager__toast-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: #FF1493;
   margin-bottom: 2px;
+  text-shadow: 0 0 5px rgba(255, 20, 147, 0.3);
 }
 
 .chat-manager__toast-message {
   font-size: 13px;
-  color: #6b7280;
+  color: rgba(232, 237, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -38,25 +38,21 @@
             </div>
           </div>
           <div class="orders-insights__pie" v-if="estadoPieSegments.length">
-            <svg viewBox="0 0 120 120" class="orders-insights__pie-chart">
-              <circle class="orders-insights__pie-bg" cx="60" cy="60" r="42" />
-              <circle
-                v-for="segment in estadoPieSegments"
-                :key="segment.label"
-                class="orders-insights__pie-segment"
-                cx="60"
-                cy="60"
-                r="42"
-                :stroke="segment.color"
-                :stroke-dasharray="segment.dashArray"
-                :stroke-dashoffset="segment.dashOffset"
-              />
-            </svg>
+            <div class="orders-insights__pie-wrap">
+              <canvas ref="estadoPieChartRef" class="orders-insights__pie-canvas" aria-hidden="true"></canvas>
+              <div class="orders-insights__pie-center">
+                <div class="orders-insights__pie-value">{{ statesActive }}</div>
+                <div class="orders-insights__pie-label">estados</div>
+              </div>
+            </div>
             <ul class="orders-insights__legend">
-              <li v-for="segment in estadoPieSegments" :key="segment.label">
-                <span class="orders-insights__dot" :style="{ background: segment.color }"></span>
-                <span class="orders-insights__legend-label">{{ segment.label }}</span>
-                <span class="orders-insights__legend-value">{{ segment.cantidad }}</span>
+              <li v-for="segment in estadoPieSegments" :key="segment.label" class="orders-insights__legend-item">
+                <span class="orders-insights__dot" :style="{ background: segment.color, boxShadow: `0 0 12px ${segment.color}` }"></span>
+                <div class="orders-insights__legend-content">
+                  <span class="orders-insights__legend-label">{{ segment.label }}</span>
+                  <span class="orders-insights__legend-value">{{ segment.cantidad }}</span>
+                  <span class="orders-insights__legend-percent">{{ Math.round((segment.cantidad / ordersConsidered) * 100) }}%</span>
+                </div>
               </li>
             </ul>
           </div>
@@ -121,10 +117,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, onBeforeUnmount, nextTick } from "vue";
 import { useDateTime } from '@/composables/useDateTime';
 
 const { getCurrentDate } = useDateTime();
+
+const estadoPieChartRef = ref(null);
 
 const props = defineProps({
   stats: {
@@ -297,6 +295,92 @@ const projectedTomorrow = computed(() => {
   });
   return proy;
 });
+
+function renderEstadoPieChart() {
+  const canvas = estadoPieChartRef.value;
+  if (!canvas || !props.estadoPieSegments.length) return;
+  
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(160, rect.width * dpr);
+  canvas.height = Math.max(160, rect.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const data = props.estadoPieSegments.map(s => s.cantidad);
+  const colors = props.estadoPieSegments.map(s => s.color);
+  const total = data.reduce((a, b) => a + b, 0) || 1;
+  let startAngle = -0.5 * Math.PI;
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const radius = Math.min(cx, cy) - 8;
+  const innerRadius = radius * 0.62;
+
+  if (total === 0 || radius <= 0) return;
+
+  data.forEach((value, i) => {
+    const angle = (value / total) * 2 * Math.PI;
+    const color = colors[i];
+
+    const grad = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, innerRadius * 0.3, cx, cy, radius);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, color);
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + angle);
+    ctx.closePath();
+
+    ctx.save();
+    ctx.shadowColor = hexToRgba(color, 0.6);
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + angle);
+    ctx.closePath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(11, 16, 32, 0.65)';
+    ctx.stroke();
+
+    startAngle += angle;
+  });
+
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(10, 10, 20, 0.9)';
+  ctx.arc(cx, cy, innerRadius, 0, 2 * Math.PI);
+  ctx.fill();
+}
+
+function hexToRgba(hex, alpha = 1) {
+  try {
+    const h = hex.replace('#', '').trim();
+    const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  } catch (e) {
+    return hex;
+  }
+}
+
+watch(() => props.estadoPieSegments, () => {
+  nextTick(() => renderEstadoPieChart());
+}, { deep: true });
+
+onMounted(() => {
+  nextTick(() => renderEstadoPieChart());
+  window.addEventListener('resize', renderEstadoPieChart);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', renderEstadoPieChart);
+});
 </script>
 
 <style scoped>
@@ -381,10 +465,11 @@ const projectedTomorrow = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--dt-gap-md);
-  padding: var(--dt-gap-lg);
+  padding: var(--dt-gap-md);
   border-radius: var(--dt-radius-md);
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 10, 20, 0.3);
+  border: 1px solid rgba(255, 20, 147, 0.15);
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.08);
 }
 
 .orders-insights__chart--secondary {
@@ -422,8 +507,8 @@ const projectedTomorrow = computed(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dt-color-text-primary);
-  background: rgba(99, 102, 241, 0.16);
-  border: 1px solid rgba(99, 102, 241, 0.32);
+  background: rgba(255, 20, 147, 0.16);
+  border: 1px solid rgba(255, 20, 147, 0.35);
 }
 
 .orders-insights__chart-body {
@@ -457,8 +542,8 @@ const projectedTomorrow = computed(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
+  background: rgba(255, 20, 147, 0.6);
+  box-shadow: 0 0 8px rgba(255, 20, 147, 0.6);
 }
 
 .orders-insights__bar-label {
@@ -473,6 +558,8 @@ const projectedTomorrow = computed(() => {
   border-radius: 999px;
   background: rgba(11, 18, 35, 0.9);
   overflow: hidden;
+  border: 1px solid rgba(255, 20, 147, 0.25);
+  box-shadow: inset 0 0 8px rgba(255, 20, 147, 0.2);
 }
 
 .orders-insights__bar-fill {
@@ -480,6 +567,16 @@ const projectedTomorrow = computed(() => {
   inset: 0;
   border-radius: 999px;
   transition: width 0.3s ease;
+  box-shadow: 
+    0 0 10px currentColor,
+    0 0 20px currentColor;
+  animation: shimmer-fill 2s infinite;
+}
+
+@keyframes shimmer-fill {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+  100% { filter: brightness(1); }
 }
 
 .orders-insights__bar-value {
@@ -491,20 +588,85 @@ const projectedTomorrow = computed(() => {
 }
 
 .orders-insights__pie {
-  flex: 0 1 240px;
+  flex: 0 1 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--dt-gap-sm);
+  gap: 16px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.orders-insights__pie-wrap {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 25px rgba(255, 20, 147, 0.3));
+}
+
+.orders-insights__pie-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: rgba(10, 10, 20, 0.6);
+  box-shadow: inset 0 2px 15px rgba(255, 20, 147, 0.1);
+}
+
+.orders-insights__pie-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.orders-insights__pie-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FF1493;
+  text-shadow: 
+    0 0 15px rgba(255, 20, 147, 0.8),
+    0 0 30px rgba(255, 20, 147, 0.5);
+  animation: glow-value 3s ease-in-out infinite;
+}
+
+@keyframes glow-value {
+  0%, 100% { 
+    text-shadow: 
+      0 0 15px rgba(255, 20, 147, 0.8),
+      0 0 30px rgba(255, 20, 147, 0.5);
+  }
+  50% { 
+    text-shadow: 
+      0 0 25px rgba(255, 20, 147, 1),
+      0 0 50px rgba(255, 20, 147, 0.7);
+  }
+}
+
+.orders-insights__pie-label {
+  font-size: 10px;
+  color: rgba(255, 20, 147, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-top: 4px;
 }
 
 .orders-insights__pie-chart {
   width: 180px;
   height: 180px;
   transform: rotate(-90deg);
+  filter: drop-shadow(0 0 20px rgba(255, 20, 147, 0.5));
+  animation: rotate-glow 4s linear infinite;
+}
+
+@keyframes rotate-glow {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 20, 147, 0.5)); }
+  50% { filter: drop-shadow(0 0 30px rgba(255, 20, 147, 0.7)); }
 }
 
 .orders-insights__pie-bg {
@@ -517,6 +679,18 @@ const projectedTomorrow = computed(() => {
   fill: none;
   stroke-width: 16;
   transition: stroke 0.3s ease;
+  filter: drop-shadow(0 0 8px currentColor);
+  animation: pulse-segment 3s ease-in-out infinite;
+}
+
+.orders-insights__pie-segment:hover {
+  stroke-width: 18;
+  filter: drop-shadow(0 0 15px currentColor);
+}
+
+@keyframes pulse-segment {
+  0%, 100% { filter: drop-shadow(0 0 8px currentColor); }
+  50% { filter: drop-shadow(0 0 12px currentColor); }
 }
 
 .orders-insights__legend {
@@ -526,27 +700,73 @@ const projectedTomorrow = computed(() => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   font-size: var(--dt-font-size-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.orders-insights__legend li {
+.orders-insights__legend-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--dt-gap-sm);
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(15, 10, 20, 0.5);
+  border-radius: var(--dt-radius-md);
+  border: 1px solid rgba(255, 20, 147, 0.2);
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.08);
+  transition: all 0.3s ease;
+}
+
+.orders-insights__legend-item:hover {
+  border-color: rgba(255, 20, 147, 0.4);
+  box-shadow: 0 0 20px rgba(255, 20, 147, 0.15);
+  transform: translateX(4px);
+}
+
+.orders-insights__legend .orders-insights__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.orders-insights__legend-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
 }
 
 .orders-insights__legend-label {
   flex: 1;
-  color: var(--dt-color-text-secondary);
+  color: var(--dt-color-text-primary);
+  font-weight: 500;
+  font-size: 12px;
 }
 
 .orders-insights__legend-value {
-  color: var(--dt-color-text-primary);
+  color: #FF1493;
+  font-weight: 700;
+  font-size: 16px;
+  text-shadow: 0 0 8px rgba(255, 20, 147, 0.5);
+}
+
+.orders-insights__legend-percent {
+  font-size: 11px;
+  color: var(--dt-color-text-muted);
   font-weight: 600;
+  padding: 3px 8px;
+  background: rgba(255, 20, 147, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 20, 147, 0.2);
 }
 
 .orders-insights__payments {
@@ -562,8 +782,10 @@ const projectedTomorrow = computed(() => {
   align-items: center;
   padding: 10px 14px;
   border-radius: var(--dt-radius-md);
-  background: rgba(11, 18, 35, 0.68);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 10, 20, 0.68);
+  border: 1px solid rgba(255, 20, 147, 0.25);
+  box-shadow: 0 0 8px rgba(255, 20, 147, 0.08);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .orders-insights__payment-meta {
@@ -583,6 +805,8 @@ const projectedTomorrow = computed(() => {
   border-radius: 999px;
   background: rgba(11, 18, 35, 0.9);
   overflow: hidden;
+  border: 1px solid rgba(255, 20, 147, 0.2);
+  box-shadow: inset 0 0 8px rgba(255, 20, 147, 0.15);
 }
 
 .orders-insights__payment-fill {
@@ -590,6 +814,15 @@ const projectedTomorrow = computed(() => {
   inset: 0;
   border-radius: 999px;
   transition: width 0.3s ease;
+  box-shadow: 
+    0 0 8px currentColor,
+    0 0 15px currentColor;
+  animation: flow-fill 3s ease-in-out infinite;
+}
+
+@keyframes flow-fill {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.4) saturate(1.2); }
 }
 
 .orders-insights__payment-value {
@@ -605,8 +838,9 @@ const projectedTomorrow = computed(() => {
   gap: var(--dt-gap-md);
   padding: var(--dt-gap-lg);
   border-radius: var(--dt-radius-md);
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 10, 20, 0.6);
+  border: 1px solid rgba(255, 20, 147, 0.25);
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.15);
   margin-top: calc(var(--dt-gap-xl) * 0.8);
 }
 

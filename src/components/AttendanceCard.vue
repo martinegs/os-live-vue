@@ -238,7 +238,7 @@ onMounted(fetchAttendance);
 }
 
 .attendance-card__list::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.32);
+  background: rgba(255, 20, 147, 0.32);
   border-radius: 999px;
 }
 
@@ -248,15 +248,16 @@ onMounted(fetchAttendance);
   gap: var(--dt-gap-sm);
   padding: 10px 14px;
   border-radius: var(--dt-radius-sm);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(10, 20, 40, 0.58);
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  border: 1px solid rgba(255, 20, 147, 0.25);
+  background: rgba(15, 10, 20, 0.58);
+  box-shadow: 0 0 8px rgba(255, 20, 147, 0.08);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .attendance-card__item:hover {
   transform: translateX(2px);
-  border-color: rgba(99, 102, 241, 0.32);
-  background: rgba(15, 27, 52, 0.7);
+  border-color: rgba(255, 20, 147, 0.4);
+  background: rgba(20, 10, 20, 0.7);
 }
 
 .attendance-card__item--present {
@@ -273,7 +274,7 @@ onMounted(fetchAttendance);
   border-radius: 50%;
   display: inline-flex;
   flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 6px rgba(255, 20, 147, 0.4);
 }
 
 .attendance-card__dot--present {

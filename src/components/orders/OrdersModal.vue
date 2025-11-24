@@ -160,8 +160,8 @@ const submitLabel = computed(() => {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(9, 15, 29, 0.85);
-  backdrop-filter: blur(6px);
+  background: rgba(10, 10, 20, 0.92);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -171,18 +171,29 @@ const submitLabel = computed(() => {
 
 .modal-card {
   width: min(620px, 100%);
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 23, 42, 0.95)),
-    rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(15, 10, 20, 0.95);
+  border: 1px solid rgba(255, 20, 147, 0.4);
   border-radius: 16px;
   box-shadow:
-    0 24px 60px rgba(37, 99, 235, 0.25),
-    inset 0 0 18px rgba(30, 64, 175, 0.25);
+    0 0 30px rgba(255, 20, 147, 0.3),
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(255, 20, 147, 0.08);
   color: #e8edff;
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
@@ -190,6 +201,7 @@ const submitLabel = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px 12px;
+  border-bottom: 1px solid rgba(255, 20, 147, 0.2);
 }
 
 .modal-header h3 {
@@ -197,21 +209,26 @@ const submitLabel = computed(() => {
   font-size: 18px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: #FF1493;
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.5);
 }
 
 .modal-close {
   border: none;
   background: transparent;
-  color: #94a3b8;
+  color: #FF1493;
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
+  text-shadow: 0 0 8px rgba(255, 20, 147, 0.4);
 }
 
 .modal-close:hover {
-  color: #f8fafc;
+  color: #FF69B4;
+  text-shadow: 0 0 15px rgba(255, 20, 147, 0.8);
+  transform: rotate(90deg);
 }
 
 .modal-body {
@@ -236,10 +253,10 @@ const submitLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(255, 20, 147, 0.7);
 }
 
 .form-field input,
@@ -247,10 +264,11 @@ const submitLabel = computed(() => {
 .form-field textarea {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 20, 147, 0.3);
+  background: rgba(10, 10, 20, 0.8);
   color: #e2e8f0;
-  transition: border 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 10px rgba(255, 20, 147, 0.05);
 }
 
 .form-field textarea {
@@ -263,18 +281,20 @@ const submitLabel = computed(() => {
 }
 
 .form-field input[readonly] {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  border-color: rgba(255, 20, 147, 0.15);
 }
 
 .form-field input:focus,
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: rgba(56, 189, 248, 0.7);
+  border-color: rgba(255, 20, 147, 0.6);
   box-shadow:
-    0 0 0 2px rgba(37, 99, 235, 0.25),
-    0 0 14px rgba(37, 99, 235, 0.35);
+    0 0 0 2px rgba(255, 20, 147, 0.15),
+    0 0 20px rgba(255, 20, 147, 0.3),
+    inset 0 0 15px rgba(255, 20, 147, 0.1);
 }
 
 .form-field--toggle {
@@ -294,23 +314,27 @@ const submitLabel = computed(() => {
 .form-toggle input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #ec4899;
+  accent-color: #FF1493;
+  cursor: pointer;
 }
 
 .form-error {
   margin: 0;
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(248, 113, 113, 0.14);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #fecaca;
+  background: rgba(255, 20, 147, 0.15);
+  border: 1px solid rgba(255, 20, 147, 0.4);
+  color: #FF69B4;
   font-size: 13px;
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.2);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 20, 147, 0.15);
 }
 
 .btn {
@@ -321,45 +345,54 @@ const submitLabel = computed(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(14, 165, 233, 0.6));
-  color: #f8fafc;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, rgba(255, 20, 147, 0.4), rgba(255, 20, 147, 0.6));
+  color: #ffffff;
+  border: 1px solid rgba(255, 20, 147, 0.5);
+  box-shadow: 
+    0 0 20px rgba(255, 20, 147, 0.4),
+    inset 0 0 15px rgba(255, 20, 147, 0.2);
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.8);
 }
 
 .btn.primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 0 30px rgba(255, 20, 147, 0.6),
+    inset 0 0 20px rgba(255, 20, 147, 0.3);
+  border-color: rgba(255, 20, 147, 0.7);
 }
 
 .btn.ghost {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 10, 20, 0.6);
   color: rgba(226, 232, 240, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid rgba(255, 20, 147, 0.25);
 }
 
 .btn.ghost:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.35);
+  border-color: rgba(255, 20, 147, 0.4);
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.2);
 }
 
 .spinner {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(240, 249, 255, 0.4);
-  border-top-color: rgba(240, 249, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FF1493;
   animation: spin 0.8s linear infinite;
 }
 

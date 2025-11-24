@@ -191,13 +191,15 @@ function formatCurrency(value) {
 }
 
 .orders-insights__card {
-  background: rgba(10, 18, 38, 0.68);
+  background: rgba(15, 10, 20, 0.68);
   border-radius: var(--dt-radius-md);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(255, 20, 147, 0.25);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .orders-insights__card-label {

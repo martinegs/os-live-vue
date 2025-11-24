@@ -119,9 +119,6 @@
       <LoginModal v-if="showLogin" @success="onLoginSuccess" @close="onLoginClose" />
     </transition>
 
-    <!-- Chat Widget -->
-    <ChatWidget v-if="authenticated" :api-origin="baseApi" />
-
     <div v-if="!authenticated" class="orders-live__overlay">
       <div class="orders-live__overlay-card">
         <h3>Sesion requerida</h3>
@@ -144,7 +141,6 @@ import AttendanceCard from "./AttendanceCard.vue";
 import FinancialCard from "./FinancialCard.vue";
 import KpiLugares from "./KpiLugares.vue";
 import LoginModal from "./LoginModal.vue";
-import ChatWidget from "./ChatWidget.vue";
 import StatsDashboard from "./StatsDashboard.vue";
 import { useOrdersLive } from "../composables/orders/useOrdersLive.js";
 import { getSessionRemainingMs, isAuthenticated, logout } from "../services/authService";
@@ -360,23 +356,31 @@ defineExpose({ openLogin });
 .orders-live__session-btn {
   padding: 10px 18px;
   border-radius: var(--dt-radius-md);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(255, 20, 147, 0.35);
+  background: rgba(255, 20, 147, 0.14);
   color: var(--dt-color-text-primary);
   font-size: var(--dt-font-size-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 8px rgba(255, 20, 147, 0.15);
 }
 
 .orders-live__session-btn:hover {
-  border-color: rgba(99, 102, 241, 0.6);
+  border-color: rgba(255, 20, 147, 0.6);
   transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(255, 20, 147, 0.3);
 }
 
 .orders-live__session-btn--logout {
-  border-color: rgba(239, 68, 68, 0.45);
-  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(255, 20, 147, 0.5);
+  background: rgba(255, 20, 147, 0.2);
+  box-shadow: 0 0 12px rgba(255, 20, 147, 0.2);
+}
+
+.orders-live__session-btn--logout:hover {
+  border-color: rgba(255, 20, 147, 0.7);
+  box-shadow: 0 0 20px rgba(255, 20, 147, 0.4);
 }
 
 .orders-live__metrics {
